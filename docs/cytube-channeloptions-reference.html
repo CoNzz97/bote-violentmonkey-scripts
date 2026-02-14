@@ -1,0 +1,201 @@
+<!-- Cytube DOM Reference Snapshot -->
+<!-- Section: Channel Settings Modal -->
+
+<div class="modal fade in" id="channeloptions" tabindex="-1" role="dialog" aria-hidden="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <!-- Header -->
+      <div class="modal-header">
+        <button class="close" data-dismiss="modal" aria-hidden="true">×</button>
+        <h4>Channel Settings</h4>
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs">
+
+          <li class="active">
+            <a href="#cs-miscoptions" data-toggle="tab">General Settings</a>
+          </li>
+
+          <li>
+            <a href="#cs-adminoptions" data-toggle="tab">Admin Settings</a>
+          </li>
+
+          <!-- Dropdown: Edit -->
+          <li class="dropdown">
+            <a id="cs-edit-dd-toggle" href="#" data-toggle="dropdown">
+              Edit <span class="caret"></span>
+            </a>
+            <ul class="dropdown-menu">
+              <li>
+                <a
+                  href="#cs-chatfilters"
+                  data-toggle="tab"
+                  onclick="socket.emit('requestChatFilters')"
+                >
+                  Chat Filters
+                </a>
+              </li>
+              <li><a href="#cs-emotes" data-toggle="tab">Emotes</a></li>
+              <li><a href="#cs-motdeditor" data-toggle="tab">MOTD</a></li>
+              <li><a href="#cs-csseditor" data-toggle="tab">CSS</a></li>
+              <li><a href="#cs-jseditor" data-toggle="tab">Javascript</a></li>
+              <li><a href="#cs-permedit" data-toggle="tab">Permissions</a></li>
+              <li>
+                <a
+                  href="#cs-chanranks"
+                  data-toggle="tab"
+                  onclick="socket.emit('requestChannelRanks')"
+                >
+                  Moderators
+                </a>
+              </li>
+            </ul>
+          </li>
+
+          <li>
+            <a
+              href="#cs-banlist"
+              data-toggle="tab"
+              onclick="socket.emit('requestBanlist')"
+            >
+              Ban list
+            </a>
+          </li>
+
+          <li>
+            <a
+              href="#cs-chanlog"
+              data-toggle="tab"
+              onclick="socket.emit('readChanLog')"
+            >
+              Log
+            </a>
+          </li>
+
+        </ul>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body">
+        <div class="tab-content">
+
+          <!-- General Settings -->
+          <div class="tab-pane active" id="cs-miscoptions">
+            <input type="checkbox" id="cs-allow_voteskip" class="cs-checkbox" />
+            <input type="checkbox" id="cs-allow_dupes" class="cs-checkbox" />
+
+            <input type="text" id="cs-voteskip_ratio" class="cs-textbox" />
+            <input type="text" id="cs-maxlength" class="cs-textbox" />
+            <input type="text" id="cs-playlist_max_duration_per_user" class="cs-textbox-timeinput" />
+            <input type="text" id="cs-afk_timeout" class="cs-textbox" />
+
+            <input type="checkbox" id="cs-enable_link_regex" class="cs-checkbox" />
+            <input type="checkbox" id="cs-chat_antiflood" class="cs-checkbox" />
+            <input type="text" id="cs-chat_antiflood_burst" class="cs-textbox" />
+            <input type="text" id="cs-chat_antiflood_sustained" class="cs-textbox" />
+            <input type="text" id="cs-new_user_chat_delay" class="cs-textbox-timeinput" />
+            <input type="text" id="cs-new_user_chat_link_delay" class="cs-textbox-timeinput" />
+          </div>
+
+          <!-- Admin Settings -->
+          <div class="tab-pane" id="cs-adminoptions">
+            <input type="text" id="cs-pagetitle" class="cs-textbox" />
+            <input type="text" id="cs-password" class="cs-textbox" />
+            <input type="text" id="cs-externalcss" class="cs-textbox" />
+            <input type="text" id="cs-externaljs" class="cs-textbox" />
+
+            <input type="checkbox" id="cs-show_public" class="cs-checkbox" />
+            <input type="checkbox" id="cs-torbanned" class="cs-checkbox" />
+            <input type="checkbox" id="cs-block_anonymous_users" class="cs-checkbox" />
+            <input type="checkbox" id="cs-allow_ascii_control" class="cs-checkbox" />
+
+            <input type="text" id="cs-playlist_max_per_user" class="cs-textbox" />
+          </div>
+
+          <!-- MOTD -->
+          <div class="tab-pane" id="cs-motdeditor">
+            <textarea id="cs-motdtext" class="form-control" rows="10"></textarea>
+            <button id="cs-motdsubmit" class="btn btn-primary">Save MOTD</button>
+          </div>
+
+          <!-- CSS -->
+          <div class="tab-pane" id="cs-csseditor">
+            <textarea id="cs-csstext" class="form-control" rows="10"></textarea>
+            <button id="cs-csssubmit" class="btn btn-primary">Save CSS</button>
+          </div>
+
+          <!-- JS -->
+          <div class="tab-pane" id="cs-jseditor">
+            <textarea id="cs-jstext" class="form-control" rows="10"></textarea>
+            <button id="cs-jssubmit" class="btn btn-primary">Save JS</button>
+          </div>
+
+          <!-- Ban list -->
+          <div class="tab-pane" id="cs-banlist">
+            <table class="table table-striped"></table>
+          </div>
+
+          <!-- Recent joins (pane exists even if not always linked in header) -->
+          <div class="tab-pane" id="cs-recentjoins">
+            <table class="table table-striped"></table>
+          </div>
+
+          <!-- Moderators / ranks -->
+          <div class="tab-pane" id="cs-chanranks">
+            <input id="cs-chanranks-name" class="form-control" type="text" />
+            <button id="cs-chanranks-mod" class="btn btn-success">+Mod</button>
+            <button id="cs-chanranks-adm" class="btn btn-info">+Admin</button>
+            <button id="cs-chanranks-owner" class="btn btn-info">+Owner</button>
+            <table class="table table-striped"></table>
+          </div>
+
+          <!-- Chat filters -->
+          <div class="tab-pane" id="cs-chatfilters">
+            <input id="cs-chatfilters-newname" class="form-control" type="text" />
+            <input id="cs-chatfilters-newregex" class="form-control" type="text" />
+            <input id="cs-chatfilters-newflags" class="form-control cs-textbox" type="text" />
+            <input id="cs-chatfilters-newreplace" class="form-control" type="text" />
+            <button id="cs-chatfilters-newsubmit" class="btn btn-primary">Create Filter</button>
+
+            <button id="cs-chatfilters-export" class="btn btn-default">Export filter list</button>
+            <button id="cs-chatfilters-import" class="btn btn-default">Import filter list</button>
+            <textarea id="cs-chatfilters-exporttext" class="form-control" rows="5"></textarea>
+          </div>
+
+          <!-- Emotes -->
+          <div class="tab-pane" id="cs-emotes">
+            <input id="cs-emotes-newname" class="form-control" type="text" />
+            <input id="cs-emotes-newimage" class="form-control" type="text" />
+            <button id="cs-emotes-newsubmit" class="btn btn-primary">Create Emote</button>
+
+            <button id="cs-emotes-export" class="btn btn-default">Export emote list</button>
+            <button id="cs-emotes-import" class="btn btn-default">Import emote list</button>
+            <textarea id="cs-emotes-exporttext" class="form-control" rows="5"></textarea>
+
+            <table class="emotelist-table table table-striped table-condensed"></table>
+          </div>
+
+          <!-- Channel log -->
+          <div class="tab-pane" id="cs-chanlog">
+            <select id="cs-chanlog-filter" class="form-control" multiple="multiple"></select>
+            <pre id="cs-chanlog-text"></pre>
+            <button id="cs-chanlog-refresh" class="btn btn-default">Refresh</button>
+          </div>
+
+          <!-- Permissions editor (structure huge; keep the pane anchor only) -->
+          <div class="tab-pane" id="cs-permedit">
+            <!-- Lots of selects inside; see dom-map for notes -->
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="modal-footer">
+        <button class="btn btn-default" type="button" data-dismiss="modal">Close</button>
+      </div>
+
+    </div>
+  </div>
+</div>

@@ -1,0 +1,79 @@
+<!-- Cytube DOM Reference Snapshot -->
+<!-- Section: Playlist / Right Pane -->
+
+<div id="playlistrow">
+  <div id="rightpane" class="col-lg-7 col-md-7">
+    <div id="rightpane-inner" class="row">
+
+      <!-- Recent media -->
+      <div id="recentmedia" class="plcontrol-collapse col-lg-12 col-md-12 collapse" aria-expanded="false">
+        <ol id="recentmedia-list">
+          <li class="recent_entry queue_entry">
+            <a class="recent_link qe_title" target="_blank" href="https://youtube.com/watch?v=...">
+              Example Recent Title
+            </a>
+            <span class="qe_time">00:00</span>
+            <span class="qe_blame">AddedBy | </span>
+          </li>
+        </ol>
+      </div>
+
+      <!-- Search controls -->
+      <div id="searchcontrol" class="plcontrol-collapse col-lg-12 col-md-12 collapse" aria-expanded="false">
+        <div class="input-group">
+          <input class="form-control" id="library_query" type="text" placeholder="Search query" />
+          <span class="input-group-btn"><button class="btn btn-default" id="library_search">Library</button></span>
+          <span class="input-group-btn"><button class="btn btn-default" id="youtube_search">YouTube</button></span>
+        </div>
+
+        <div class="checkbox">
+          <label><input class="add-temp" type="checkbox" /> Add as temporary</label>
+        </div>
+
+        <ul class="videolist col-lg-12 col-md-12" id="library"></ul>
+      </div>
+
+      <!-- Add from URL -->
+      <div id="addfromurl" class="plcontrol-collapse col-lg-12 col-md-12 collapse" aria-expanded="false">
+        <div class="input-group">
+          <input class="form-control" id="mediaurl" type="text" placeholder="Media URL" />
+          <span class="input-group-btn"><button class="btn btn-default" id="queue_next" disabled>Queue next</button></span>
+          <span class="input-group-btn"><button class="btn btn-default" id="queue_end">Queue last</button></span>
+        </div>
+
+        <div class="checkbox">
+          <label><input class="add-temp" type="checkbox" /> Add as temporary</label>
+        </div>
+
+        <div id="addfromurl-queue"></div>
+      </div>
+
+      <!-- Queue -->
+      <div class="col-lg-12 col-md-12">
+        <ul class="videolist ui-sortable queue_sortable" id="queue">
+          <li class="queue_entry pluid-12345 thumbed" data-seconds="155" data-original-title="Added by: Someone">
+            <a class="qe_title" href="https://youtube.com/watch?v=..." target="_blank">
+              Example Queue Title
+            </a>
+            <span class="qe_time">02:35</span>
+            <span class="qe_blame">Someone | </span>
+            <div class="qe_clear"></div>
+            <div class="btn-group">
+              <button class="btn btn-xs qbtn-mark btn-default">Notify</button>
+              <button class="btn btn-xs btn-default qbtn-play">Play</button>
+              <button class="btn btn-xs btn-default qbtn-next">Queue Next</button>
+              <button class="btn btn-xs btn-default qbtn-tmp">Temp</button>
+              <button class="btn btn-xs btn-default qbtn-delete">Delete</button>
+            </div>
+          </li>
+        </ul>
+
+        <div id="plmeta">
+          <span id="plcount">N items</span>
+          <span id="pllength">HH:MM:SS</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

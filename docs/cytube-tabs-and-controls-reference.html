@@ -1,0 +1,99 @@
+<!-- Cytube DOM Reference Snapshot -->
+<!-- Section: Main Tabs + Playlist/Polls/Tools Controls -->
+
+<div id="MainTabContainer">
+  <!-- Tab headers -->
+  <ul class="nav nav-tabs" role="tablist">
+    <li role="presentation">
+      <a role="tab" data-toggle="tab" href="#playlistTab">Playlist</a>
+    </li>
+
+    <li role="presentation">
+      <a role="tab" data-toggle="tab" href="#pollsTab">
+        Polls <span id="pollsbadge" class="badge"></span>
+      </a>
+    </li>
+
+    <li role="presentation">
+      <a
+        href="https://docs.google.com/forms/..."
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Oshi Eyes
+      </a>
+    </li>
+
+    <li role="presentation">
+      <a role="tab" data-toggle="tab" href="#toolsTab">Tools</a>
+    </li>
+  </ul>
+
+  <!-- Tab contents -->
+  <div class="tab-content">
+
+    <!-- Playlist tab -->
+    <div role="tabpanel" class="tab-pane active" id="playlistTab">
+      <div id="rightcontrols" class="col-lg-7 col-md-7">
+
+        <!-- Playlist controls -->
+        <div class="btn-group" id="plcontrol">
+          <button id="showmediaurl" data-toggle="collapse" data-target="#addfromurl"></button>
+          <button id="showsearch" data-toggle="collapse" data-target="#searchcontrol"></button>
+          <button id="showcustomembed" data-toggle="collapse" data-target="#customembed"></button>
+          <button id="showplaylistmanager" data-toggle="collapse" data-target="#playlistmanager"></button>
+
+          <button id="clearplaylist" style="display: none;"></button>
+          <button id="shuffleplaylist"></button>
+          <button id="hidePlaylist"></button>
+
+          <button id="qlockbtn" disabled></button>
+          <button id="leader"></button>
+
+          <button id="showrecent" data-toggle="collapse" data-target="#recentmedia"></button>
+
+          <input type="button" id="rratbutton" value="🐀" />
+          <input type="button" id="rratrefresh" value="🔃" />
+        </div>
+
+        <!-- Video controls -->
+        <div class="btn-group pull-right" id="videocontrols">
+          <button id="mediarefresh"></button>
+          <button id="fullscreenbtn"></button>
+          <button id="getplaylist"></button>
+          <button id="voteskip"></button>
+        </div>
+      </div>
+
+      <!-- Playlist content itself lives under #playlistrow / #queue (see playlist reference file) -->
+    </div>
+
+    <!-- Polls tab -->
+    <div role="tabpanel" class="tab-pane" id="pollsTab">
+      <button class="btn btn-sm btn-default" id="newpollbtn">New Poll</button>
+      <div id="pollhistory" class="col-lg-12 col-md-12"></div>
+    </div>
+
+    <!-- Tools tab -->
+    <div role="tabpanel" class="tab-pane" id="toolsTab">
+      <div id="tools-button-container">
+        <button id="movie-mode-toggle">🎬</button>
+        <button id="world-clock-btn">🕐</button>
+        <button id="tweet-main-toggle">🐦</button>
+        <button id="cytube-logger-toggle">📊 Emote Tracker</button>
+        <button id="holodex-toggle-btn">🎤</button>
+      </div>
+
+      <div id="tools-content-area">
+        <div id="cytube-logger-menu">
+          <button id="logger-preview-btn">Preview Log</button>
+          <button id="logger-stats-btn">Emote Stats</button>
+          <button id="logger-export-btn">Export Stats</button>
+          <button id="logger-settings-btn">Settings</button>
+          <button id="logger-clear-btn">Clear Data</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
