@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tweet & Media Preview
 // @namespace    http://tampermonkey.net/
-// @version      2026.02.14
+// @version      2026.02.17
 // @description  Inline tweet + media
 // @author       You
 // @match        https://om3tcw.com/r/*
@@ -16,12 +16,15 @@
   const RETRY_DELAY_MS = 500;
   const MAX_RETRIES = 120;
 
-  const tweetRegex = /https:\/\/(x|twitter)\.com\/.*?\/status\/(\d+)/i;
+  const API_BASE = 'https://unable-diet-least-attorneys.trycloudflare.com';
+  const API_ORIGIN = new URL(API_BASE).origin;
+  const tweetRegex = /https:\/\/(x|twitter|xcancel)\.com\/.*?\/status\/(\d+)/i;
   const mediaRegex = /\.(jpe?g|png|gif|webp|mp4|webm|mov)(\?.*)?$/i;
-  const allMediaLinkSelector = "a[href*='twitter.com'], a[href*='x.com'], a[href$='.jpg'], a[href$='.jpeg'], a[href$='.png'], a[href$='.gif'], a[href$='.webp'], a[href$='.mp4'], a[href$='.webm'], a[href$='.mov']";
+  const allMediaLinkSelector = "a[href*='twitter.com'], a[href*='x.com'], a[href*='xcancel.com'], a[href*='.jpg'], a[href*='.jpeg'], a[href*='.png'], a[href*='.gif'], a[href*='.webp'], a[href*='.mp4'], a[href*='.webm'], a[href*='.mov']";
 
   let tweetPreviewActive = readStoredEnabled();
   const tweetInfoCache = {};
+  const tweetVideoSourcesCache = {};
 
   function readStoredEnabled() {
     try {
@@ -91,7 +94,7 @@
     }
 
     try {
-      const res = await fetch(`https://unable-diet-least-attorneys.trycloudflare.com/api/v1/statuses/${tweetId}`);
+      const res = await fetch(`${API_BASE}/api/v1/statuses/${tweetId}`);
       const data = await res.json();
       tweetInfoCache[tweetId] = data;
       return data;
@@ -101,7 +104,121 @@
     }
   }
 
-  function buildEmbed(info) {
+  function extractTweetId(url) {
+    const match = tweetRegex.exec(url || '');
+    return match ? match[2] : null;
+  }
+
+  async function fetchSyndicationVideoSources(tweetUrl) {
+    const tweetId = extractTweetId(tweetUrl);
+    if (!tweetId) {
+      return [];
+    }
+
+    if (tweetVideoSourcesCache[tweetId]) {
+      return tweetVideoSourcesCache[tweetId];
+    }
+
+    try {
+      const res = await fetch(`https://cdn.syndication.twimg.com/tweet-result?id=${tweetId}&lang=en`);
+      if (!res.ok) {
+        tweetVideoSourcesCache[tweetId] = [];
+        return [];
+      }
+
+      const data = await res.json();
+      const mediaDetails = Array.isArray(data.mediaDetails)
+        ? data.mediaDetails
+        : (Array.isArray(data.media_details) ? data.media_details : []);
+
+      const urls = [];
+      mediaDetails.forEach((item) => {
+        const variants = item?.video_info?.variants || item?.videoInfo?.variants || [];
+        variants.forEach((variant) => {
+          const contentType = variant.content_type || variant.contentType || '';
+          if (!/video\/mp4/i.test(contentType)) {
+            return;
+          }
+          if (variant.url) {
+            urls.push(variant.url);
+          }
+        });
+      });
+
+      const deduped = [...new Set(urls)];
+      tweetVideoSourcesCache[tweetId] = deduped;
+      return deduped;
+    } catch (err) {
+      tweetVideoSourcesCache[tweetId] = [];
+      return [];
+    }
+  }
+
+  function tweetHasVideo(info) {
+    return Array.isArray(info?.media_attachments) && info.media_attachments.some((a) => a?.type === 'video' || a?.type === 'gifv');
+  }
+
+  function createTweetIframe(tweetId) {
+    const iframe = document.createElement('iframe');
+    iframe.allow = 'fullscreen';
+    iframe.src = `${API_BASE}/embed-iframe/${tweetId}`;
+    iframe.style.width = '100%';
+    iframe.style.border = 'none';
+    iframe.style.display = 'block';
+    iframe.height = '420';
+    iframe.dataset.tweetIframe = '1';
+    return iframe;
+  }
+
+  function initIframeMessageBridge() {
+    if (window.__tweetPreviewIframeBridgeInit) {
+      return;
+    }
+    window.__tweetPreviewIframeBridgeInit = true;
+
+    window.addEventListener('message', (event) => {
+      if (event.origin !== API_ORIGIN) {
+        return;
+      }
+
+      let data = event.data;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch (err) {
+          return;
+        }
+      }
+
+      if (!data || typeof data !== 'object' || !data.src) {
+        return;
+      }
+
+      const iframes = document.querySelectorAll(`iframe[src^="${data.src}"]`);
+      if (data.context === 'iframe.error') {
+        iframes.forEach((iframe) => {
+          iframe.style.display = 'none';
+          const fallback = iframe.nextElementSibling;
+          if (fallback && fallback.classList.contains('tweet-video-fallback-link')) {
+            fallback.style.display = 'block';
+          }
+        });
+        return;
+      }
+
+      if (data.context === 'iframe.resize') {
+        const height = Number(data.height);
+        if (!Number.isFinite(height) || height <= 0) {
+          return;
+        }
+        iframes.forEach((iframe) => {
+          iframe.height = String(height + 50);
+        });
+      }
+    });
+  }
+
+  async function buildEmbed(info, tweetUrl) {
     const wrapper = document.createElement('div');
     wrapper.innerHTML = `
       <div class="tweet-content">
@@ -117,28 +234,30 @@
       </div>
     `;
 
+    const syndicationSources = await fetchSyndicationVideoSources(tweetUrl);
     const imageContainer = wrapper.querySelector('.tweet-image');
     info.media_attachments.forEach((attachment) => {
       const mediaWrapper = document.createElement('div');
-      const videoSrc = attachment.remote_url || attachment.url;
 
       if (attachment.type === 'video' || attachment.type === 'gifv') {
-        mediaWrapper.innerHTML = `
-          <video
-            controls
-            muted
-            playsinline
-            preload="metadata"
-            referrerpolicy="no-referrer"
-            src="${videoSrc}"
-            poster="${attachment.preview_url}"
-            style="width:100%; border-radius:6px; display:block; background:#000;"
-            onerror="this.style.display='none'; this.nextElementSibling.style.display='block';"
-          ></video>
-          <a href="${videoSrc}" target="_blank" style="display:none; padding:10px; color:#f88; text-align:center;">
-            ⚠️ Video blocked. Click to watch externally.
-          </a>
-        `;
+        const sourceCandidates = buildVideoSourceCandidates(attachment.url, attachment.remote_url, ...syndicationSources);
+        const video = document.createElement('video');
+        video.controls = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.poster = attachment.preview_url || '';
+        video.style.cssText = 'width:100%; border-radius:6px; display:block; background:#000;';
+
+        const fallbackLink = document.createElement('a');
+        fallbackLink.href = sourceCandidates[0] || attachment.url || attachment.remote_url || '#';
+        fallbackLink.target = '_blank';
+        fallbackLink.style.cssText = 'display:none; padding:10px; color:#f88; text-align:center;';
+        fallbackLink.textContent = '⚠️ Video blocked. Click to watch externally.';
+
+        mediaWrapper.appendChild(video);
+        mediaWrapper.appendChild(fallbackLink);
+        attachVideoSourceWithFallback(video, sourceCandidates, fallbackLink);
       } else {
         mediaWrapper.innerHTML = `<a href="${attachment.url}" target="_blank" referrerpolicy="no-referrer"><img src="${attachment.preview_url}" style="width:100%; border-radius:6px; display:block;"></a>`;
       }
@@ -166,6 +285,62 @@
     }
   }
 
+  function buildVideoSourceCandidates(...urls) {
+    const candidates = [];
+    const seen = new Set();
+
+    function addCandidate(url) {
+      const value = (url || '').trim();
+      if (!value || seen.has(value)) {
+        return;
+      }
+      seen.add(value);
+      candidates.push(value);
+    }
+
+    urls.forEach(addCandidate);
+
+    const baseCandidates = [...candidates];
+    baseCandidates.forEach((url) => {
+      if (!/video\.twimg\.com/i.test(url) || url.includes('?')) {
+        return;
+      }
+      addCandidate(`${url}?tag=14`);
+      addCandidate(`${url}?tag=16`);
+      addCandidate(`${url}?tag=12`);
+    });
+
+    return candidates;
+  }
+
+  function attachVideoSourceWithFallback(video, sourceCandidates, fallbackLink) {
+    if (!sourceCandidates.length) {
+      video.style.display = 'none';
+      fallbackLink.style.display = 'block';
+      return;
+    }
+
+    let sourceIndex = 0;
+    fallbackLink.href = sourceCandidates[0];
+
+    const loadAt = (index) => {
+      if (index >= sourceCandidates.length) {
+        video.style.display = 'none';
+        fallbackLink.style.display = 'block';
+        return;
+      }
+      sourceIndex = index;
+      video.src = sourceCandidates[sourceIndex];
+      video.load();
+    };
+
+    video.addEventListener('error', () => {
+      loadAt(sourceIndex + 1);
+    });
+
+    loadAt(0);
+  }
+
   function addTweetPreview(link, messageEl) {
     const button = createPreviewToggle('tweet-preview-toggle');
     if (!link.parentNode) {
@@ -190,7 +365,20 @@
       if (info) {
         embed.style.display = 'block';
         preview.querySelector('.tweet-loader')?.remove();
-        embed.appendChild(buildEmbed(info));
+        const tweetId = extractTweetId(link.href);
+        if (tweetId && tweetHasVideo(info)) {
+          const iframe = createTweetIframe(tweetId);
+          const fallbackLink = document.createElement('a');
+          fallbackLink.href = link.href;
+          fallbackLink.target = '_blank';
+          fallbackLink.referrerPolicy = 'no-referrer';
+          fallbackLink.className = 'tweet-video-fallback-link';
+          fallbackLink.style.cssText = 'display:none; padding:10px; color:#f88; text-align:center;';
+          fallbackLink.textContent = '⚠️ Video blocked. Click to watch externally.';
+          embed.replaceChildren(iframe, fallbackLink);
+        } else {
+          embed.appendChild(await buildEmbed(info, link.href));
+        }
       } else {
         preview.innerHTML = '<div style="color:#ff6b6b;padding:6px;font-size:13px;">Failed to load tweet</div>';
       }
@@ -218,9 +406,27 @@
       embed.style.display = 'block';
       const isVideo = /\.(mp4|webm|mov)$/i.test(link.href);
 
-      embed.innerHTML = isVideo
-        ? `<video controls playsinline preload="metadata" muted referrerpolicy="no-referrer" src="${link.href}" style="width:100%; max-height:80vh; border-radius:6px; display:block; background:#000;"></video>`
-        : `<a href="${link.href}" target="_blank" referrerpolicy="no-referrer"><img src="${link.href}" style="width:100%; border-radius:6px; display:block;" loading="lazy"></a>`;
+      if (isVideo) {
+        const sourceCandidates = buildVideoSourceCandidates(link.href);
+        const video = document.createElement('video');
+        video.controls = true;
+        video.playsInline = true;
+        video.preload = 'metadata';
+        video.muted = true;
+        video.style.cssText = 'width:100%; max-height:80vh; border-radius:6px; display:block; background:#000;';
+
+        const fallbackLink = document.createElement('a');
+        fallbackLink.href = sourceCandidates[0] || link.href;
+        fallbackLink.target = '_blank';
+        fallbackLink.referrerPolicy = 'no-referrer';
+        fallbackLink.style.cssText = 'display:none; padding:10px; color:#f88; text-align:center;';
+        fallbackLink.textContent = '⚠️ Video blocked. Click to watch externally.';
+
+        embed.replaceChildren(video, fallbackLink);
+        attachVideoSourceWithFallback(video, sourceCandidates, fallbackLink);
+      } else {
+        embed.innerHTML = `<a href="${link.href}" target="_blank" referrerpolicy="no-referrer"><img src="${link.href}" style="width:100%; border-radius:6px; display:block;" loading="lazy"></a>`;
+      }
 
       preview.querySelector('.tweet-loader')?.remove();
       messageEl.appendChild(preview);
@@ -269,6 +475,7 @@
   `);
 
   (async () => {
+    initIframeMessageBridge();
     createMainToggle();
     scanExistingLinks();
 

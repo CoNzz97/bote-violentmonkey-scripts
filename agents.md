@@ -1,28 +1,30 @@
-# AGENTS — Cytube Violentmonkey Client Scripts Repo
+# AGENTS — Cytube Violentmonkey Client Scripts
 
-This repository contains **client-side userscripts** (Violentmonkey/Tampermonkey) that enhance the Cytube web UI.
+This repo contains **client-side userscripts** (Violentmonkey/Tampermonkey) that enhance the Cytube web UI.
 Scripts run on a **live Cytube page** and interact with an existing, dynamic DOM that is **not owned by this repo**.
 
-The `/docs` folder contains **DOM reference snapshots** (partial HTML + selector maps). Use them as **context and stable selector references**, not as complete/authoritative HTML.
+The `/docs` folder contains a **DOM context pack** (partial HTML snapshots + selector maps). Treat it as the
+best available reference for stable selectors, **not** authoritative/full page HTML.
 
 ---
 
-## What to treat as “source of truth”
+## Source of truth for DOM + selectors
 
-When coding against the Cytube DOM, consult these files in `/docs/cytube-dom/`:
+Use these as your primary references:
 
-- `*-reference.html`: minimal, cleaned structural snapshots
-- `dom-map-*.md`: selector guides + safe patterns
+- `docs/*reference.html`: minimal, cleaned structural snapshots
+- `docs/dom-map-*.md`: selector guides + safe patterns
+- `docs/README.md`: how to use the context pack
 
 If something is missing from the reference pack, your code must:
 
 - null-check elements
 - tolerate missing permissions/layout differences
-- fail silently (no hard crash loops)
+- fail silently (no infinite retry spam)
 
 ---
 
-## Environment assumptions (core)
+## Environment assumptions
 
 - Scripts execute in a **live Cytube environment**
 - DOM is **dynamic and socket-driven**
@@ -41,16 +43,16 @@ If something is missing from the reference pack, your code must:
 
 ---
 
-## DOM usage rules (critical)
+## Core DOM usage rules (critical)
 
-1. Prefer **IDs**, then classes, then structure
-2. Never rely on usernames embedded in class names unless unavoidable (usernames can contain CSS-breaking characters)
-3. Always null-check queried nodes
+1. Prefer **IDs**, then classes, then structure.
+2. Avoid usernames embedded in selectors (usernames can contain CSS-breaking characters).
+3. Always null-check queried nodes.
 4. Expect missing elements on:
    - mobile layouts
    - logged-out users
    - restricted permissions
-5. Prefer additive behavior: *attach, don’t replace*
+5. Prefer additive behavior: **attach, don’t replace**.
 
 ### Canonical anchors & selectors
 
@@ -62,10 +64,10 @@ If something is missing from the reference pack, your code must:
 | Chat log container | `#messagebuffer` |
 | Chat input row | `#chatinputrow` |
 | Chat input field | `#chatline` |
-| Emote picker button | `#emotelistbtn` |
 | User list container | `#userlist` |
 | Playlist wrapper | `#playlistrow` |
 | Playlist queue | `#queue` |
+| Tools tab pane | `#toolsTab` |
 | Tools tab button container | `#tools-button-container` |
 | Tools tab content area | `#tools-content-area` |
 | User options modal | `#useroptions` |
@@ -73,36 +75,38 @@ If something is missing from the reference pack, your code must:
 
 ---
 
-## Tools tab integration (preferred UI pattern)
+## Tools Tab host script (shared UI surface)
 
-If a script needs a UI panel, integrate it into the **Tools** tab.
+**Important:** This repo uses `Cytube Tools Tab.js` as the shared “UI host” for other scripts.
+
+### Contract
+
+- `Cytube Tools Tab.js` is responsible for ensuring the Tools tab exists and that it contains:
+  - `#tools-button-container` (for toggle buttons)
+  - `#tools-content-area` (for panels)
+- Other scripts should **only**:
+  - append their own button(s) into `#tools-button-container`
+  - append their own panel root into `#tools-content-area`
+  - toggle panel visibility (do not delete/recreate constantly)
 
 ### Rules
 
-- One toggle button per script
-- One root container per script (panel root)
-- Toggle **visibility**, not existence
-- Never auto-open UI on page load
-- Persist state with GM storage (preferred) or localStorage (legacy scripts may already use localStorage)
-
-### Required behavior
-
-- Button toggles only its own panel
-- Do not open/modify other scripts’ UI
-- UI must survive reconnects / DOM refreshes
-
-### Recommended structure
-
-- Button: `#tools-button-container`
-- Panel: child of `#tools-content-area`
+- One toggle button per script.
+- One panel root per script.
+- Toggle **visibility**, not existence.
+- Never auto-open UI on page load.
+- Never modify/remove other scripts’ UI.
 - IDs/classes must be namespaced per script:
-  - `cytube-tools-<scriptname>-*`
+  - IDs: `cytube-tools-<script>-...`
+  - classes: `<script>-...`
+
+See: `docs/cytube-tools-tab.md` for the full integration guide and recommended helper patterns.
 
 ---
 
 ## Modals & tabs (Options / Channel Settings)
 
-Use existing Cytube Bootstrap modals; do not recreate them from scratch:
+Use existing Cytube Bootstrap modals; do **not** recreate them from scratch:
 
 - `#useroptions`
 - `#channeloptions`
@@ -114,23 +118,23 @@ $('#channeloptions').modal('show');
 $('a[href="#cs-permedit"]').tab('show');
 ```
 
-### Safe notes
+### Notes
 
 - Modals may not exist until opened (or may be injected late). Always null-check.
-- Some channel settings tabs have inline socket calls (e.g. Banlist / Chat Filters / Log).
+- Some channel settings tabs have inline socket calls (Banlist / Chat Filters / Log).
   - Do **not** overwrite these handlers.
-  - If you need the data, trigger the tab the *normal* way (show tab link), then attach listeners after.
+  - If you need the data, trigger the tab the normal way, then attach your listeners after.
 
 ---
 
 ## “Permedit only” (extracting permissions editor safely)
 
-`#cs-permedit` is a **tab pane** inside `#channeloptions`. To get **only** the permedit UI:
+`#cs-permedit` is a **tab pane** inside `#channeloptions`. To get only the permedit UI:
 
 1. Ensure the channel modal exists (or open it).
 2. Select the permedit tab (so content is present and laid out).
 3. **Clone** the pane contents into your own panel (Tools tab) or your own modal.
-4. Never move the original nodes (moving breaks Cytube’s own modal).
+4. Never move original nodes (moving breaks Cytube’s own modal).
 
 Example pattern:
 
@@ -139,30 +143,27 @@ function clonePermEditInto(targetEl) {
   const modal = document.querySelector('#channeloptions');
   if (!modal) return;
 
-  // Make sure the tab exists, then show it using bootstrap tab behavior.
   const tabLink = modal.querySelector('a[href="#cs-permedit"][data-toggle="tab"]');
   if (tabLink && window.jQuery) window.jQuery(tabLink).tab('show');
 
   const pane = modal.querySelector('#cs-permedit');
   if (!pane) return;
 
-  // Clone, don't move.
   const clone = pane.cloneNode(true);
   clone.id = 'cytube-tools-permedit-clone';
-
   targetEl.replaceChildren(clone);
 }
 ```
 
-**Important:** In the reference snapshot, many selects in `#cs-permedit` don’t have stable IDs.
-If your automation relies on specific fields/order, update the docs pack with a more detailed snapshot and/or
-add stable hooks in your *clone only* (e.g., add `data-*` attributes after cloning).
+**Gotcha:** Many selects in `#cs-permedit` don’t have stable IDs in the snapshot.
+If automation relies on specific fields/order, update the docs pack and/or add stable hooks
+to your *clone only* (e.g., `data-*` attributes after cloning).
 
 ---
 
 ## MutationObservers (preferred over polling)
 
-Use MutationObservers for live updates rather than tight `setInterval` scanning.
+Use MutationObservers for live updates rather than tight polling loops.
 
 ### Approved targets
 
@@ -175,7 +176,7 @@ Use MutationObservers for live updates rather than tight `setInterval` scanning.
 - Mark processed nodes with `data-*` flags
 - Avoid reprocessing on reconnects
 - Disconnect observers when feature is disabled
-- Never attach unbounded observers (e.g., observing `document.body` without strict filters)
+- Avoid observing `document.body` unless you have strict filtering + a hard stop
 
 Example:
 
@@ -197,11 +198,11 @@ mo.observe(document.querySelector('#messagebuffer'), { childList: true });
 
 ## Styling rules
 
-- Use `GM_addStyle` (preferred) for CSS injection
-- Namespace all classes and IDs per script
-- Match Cytube’s Bootstrap look (spacing, `btn btn-sm btn-default`, etc.)
-- Never globally override Bootstrap selectors (`.btn`, `.modal`, `.nav`, etc.)
-- Avoid `!important` unless the feature is specifically “layout mode” (movie mode, etc.)
+- Use `GM_addStyle` for CSS injection.
+- Namespace all CSS selectors per script.
+- Match Cytube’s Bootstrap look (`btn btn-sm btn-default`, spacing, etc.).
+- Never globally override Bootstrap selectors (`.btn`, `.modal`, `.nav`, etc.).
+- Avoid `!important` unless the feature is specifically “layout mode” (e.g. movie mode).
 
 ---
 
@@ -213,7 +214,7 @@ Preferred:
 
 Allowed:
 
-- `localStorage` (legacy scripts already use it; if you do, **namespace keys**) e.g. `cytube:<script>:setting`
+- `localStorage` (legacy scripts may already use it; **namespace keys**)
 
 Rules:
 
@@ -221,6 +222,10 @@ Rules:
 - Version keys if schema changes
 - Handle corrupted/missing data gracefully
 - Cap stored logs/stats to avoid infinite growth
+
+Suggested key format:
+
+- `cytube:<script>:<setting>`
 
 ---
 
@@ -230,7 +235,7 @@ Rules:
 - Cap stored logs/stats/message buffers
 - Debounce DOM scans
 - Avoid synchronous loops over large DOM trees
-- Prefer event delegation and MutationObservers
+- Prefer event delegation + MutationObservers
 
 ---
 
@@ -240,11 +245,11 @@ Rules:
 - Never override Cytube globals
 - Never assume moderator/admin permissions
 - Never block or replace native handlers
-- Scripts must fail silently if required DOM is missing (no infinite retry spam)
+- Scripts must fail silently if required DOM is missing
 
 ---
 
-## Files to consult (docs pack index)
+## Docs pack index
 
 - Navbar:
   - `cytube-navbar-reference.html`
@@ -270,45 +275,25 @@ Rules:
 - Channel Settings Modal:
   - `cytube-channeloptions-reference.html`
   - `dom-map-channeloptions.md`
+- Tools Tab integration (this repo):
+  - `cytube-tools-tab.md`
 
 ---
 
-## Repo suggestions (practical)
+## Practical repo suggestions
 
-1. **Shared utilities module (optional but recommended)**  
-   Create a tiny shared helper file (or copy/paste “snippet header”) used by each userscript:
-   - `waitForEl(selector, {timeout, interval})`
-   - `oncePerPage(key, fn)`
-   - `safeOn(container, event, selector, handler)` for delegated events
-   - `createToolsToggle({id, icon, title, onToggle})`
-   Keep it dependency-free and copyable (userscripts can’t easily import without a build step).
+1. **Standardize on max-retry waiters**  
+   Prefer a `waitFor(selector)` helper with a max attempt count (like your Tools Tab + Movie Mode scripts),
+   rather than an always-on `MutationObserver(document.body)`.
 
-2. **Standardize storage**  
-   Prefer GM storage; if keeping localStorage for compatibility, namespace keys consistently.
+2. **Namespacing standard**  
+   - Button IDs: `<script>-toggle`
+   - Panel root IDs: `cytube-tools-<script>-panel`
+   - CSS prefix: `.cytube-tools-<script>-*`
 
-3. **Consistent namespacing**  
-   For every script:
-   - DOM IDs: `cytube-tools-<script>-...`
-   - CSS classes: `<script>-...`
-   - Storage keys: `cytube:<script>:...`
-
-4. **Docs pack maintenance workflow**  
-   When you discover missing/changed DOM:
-   - update the corresponding `*-reference.html`
-   - update `dom-map-*.md`
-   - add a quick “gotcha” note (permissions, layout variants, element appears only when modal is open, etc.)
-
-5. **Avoid tight retry loops**  
-   If using `setTimeout(retry, 500)` patterns, add a max retry count or stop after success.
-   Prefer observing a stable parent (navbar/main container) and react once children appear.
-
----
-
-## Output expectations for Codex/agents
-
-When asked to implement a feature:
-
-- Use the `/docs/cytube-dom/*` reference snapshots + `dom-map-*.md` selectors
-- Write code that tolerates DOM differences and missing permissions
-- Keep changes modular per script
-- Avoid breaking native Cytube behavior
+3. **Shared “Tools Tab API” snippet**  
+   Keep a small copy/paste helper pattern (in docs) that scripts can reuse to:
+   - ensure the Tools tab is present
+   - register a button
+   - register a panel
+   - persist open/closed state

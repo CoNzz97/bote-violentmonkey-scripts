@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         Movie Mode Toggle
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Toggle Movie Mode CSS + Exit button in video header
-// @author       You + Gemini
+// @author       You
 // @match        https://om3tcw.com/r/*
 // @grant        GM_addStyle
 // ==/UserScript==
@@ -16,6 +16,7 @@
   const EXIT_ID = 'movie-mode-exit';
   const RETRY_DELAY_MS = 500;
   const MAX_RETRIES = 120;
+  const OBSERVER_FLAG = 'data-cytube-movie-mode-observer';
 
   const movieModeCSS = `
     #MainTabContainer { display: none !important; }
@@ -27,6 +28,7 @@
 
   let movieModeActive = readStoredState();
   let movieModeStyleElement = null;
+  let uiSyncTimer = null;
 
   function readStoredState() {
     try {
@@ -74,6 +76,76 @@
     applyMovieModeStyle();
     syncUiState();
     saveStoredState();
+  }
+
+  function queueUiSync() {
+    if (uiSyncTimer) {
+      return;
+    }
+    uiSyncTimer = setTimeout(() => {
+      uiSyncTimer = null;
+      ensureMainToggle();
+      ensureExitButton();
+      syncUiState();
+      startScopedObservers();
+    }, 40);
+  }
+
+  function mutationHasRelevantNode(nodes) {
+    for (const node of nodes) {
+      if (!(node instanceof HTMLElement)) {
+        continue;
+      }
+      if (node.id === TOGGLE_ID || node.id === EXIT_ID) {
+        return true;
+      }
+      if (node.id === 'tools-button-container' || node.id === 'videowrap-header' || node.id === 'currenttitle') {
+        return true;
+      }
+      if (node.querySelector?.(`#${TOGGLE_ID}, #${EXIT_ID}, #tools-button-container, #videowrap-header, #currenttitle`)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function observeScopedTarget(target) {
+    if (!target || target.getAttribute(OBSERVER_FLAG) === '1') {
+      return false;
+    }
+    target.setAttribute(OBSERVER_FLAG, '1');
+
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type !== 'childList') {
+          continue;
+        }
+        if (mutationHasRelevantNode(mutation.addedNodes) || mutationHasRelevantNode(mutation.removedNodes)) {
+          queueUiSync();
+          return;
+        }
+      }
+    });
+
+    observer.observe(target, { childList: true, subtree: true });
+    return true;
+  }
+
+  function startScopedObservers(attempt = 0) {
+    const mainTabContainer = document.getElementById('MainTabContainer');
+    const videoWrap = document.getElementById('videowrap');
+    const attachedMain = observeScopedTarget(mainTabContainer);
+    const attachedVideo = observeScopedTarget(videoWrap);
+
+    if (attachedMain && attachedVideo) {
+      return;
+    }
+
+    if (attempt >= MAX_RETRIES) {
+      return;
+    }
+
+    setTimeout(() => startScopedObservers(attempt + 1), RETRY_DELAY_MS);
   }
 
   function ensureMainToggle() {
@@ -159,17 +231,6 @@
 
   applyMovieModeStyle();
   waitForUi();
-
-  const observer = new MutationObserver(() => {
-    if (!document.getElementById(TOGGLE_ID)) {
-      ensureMainToggle();
-    }
-    if (!document.getElementById(EXIT_ID)) {
-      ensureExitButton();
-    }
-    syncUiState();
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
+  startScopedObservers();
 
 })();

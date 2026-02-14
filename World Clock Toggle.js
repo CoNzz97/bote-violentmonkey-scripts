@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         World Clock Toggle
 // @namespace    world.clock
-// @version      2.5
+// @version      2.6
 // @description  Adds clocks to nav bar
 // @match        https://om3tcw.com/r/*
 // @grant        GM_getValue
@@ -19,10 +19,11 @@
   const CLOCK_UPDATE_MS = 30000;
 
   const TIMEZONES = {
-    UK: 0,
-    Japan: 9,
-    America: -5
+    UK: 'Europe/London',
+    Japan: 'Asia/Tokyo',
+    America: 'America/New_York'
   };
+  const timeFormatters = {};
 
   const state = {
     button: null,
@@ -58,15 +59,22 @@
     document.head.appendChild(style);
   }
 
+  function formatTimeInZone(timeZone) {
+    if (!timeFormatters[timeZone]) {
+      timeFormatters[timeZone] = new Intl.DateTimeFormat('en-GB', {
+        timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+    }
+    return timeFormatters[timeZone].format(new Date());
+  }
+
   function calculateTimes() {
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     const times = {};
-    for (const [region, offset] of Object.entries(TIMEZONES)) {
-      const regionTime = new Date(utc + (offset * 3600000));
-      const hours = String(regionTime.getHours()).padStart(2, '0');
-      const minutes = String(regionTime.getMinutes()).padStart(2, '0');
-      times[region] = `${hours}:${minutes}`;
+    for (const [region, zone] of Object.entries(TIMEZONES)) {
+      times[region] = formatTimeInZone(zone);
     }
     return times;
   }

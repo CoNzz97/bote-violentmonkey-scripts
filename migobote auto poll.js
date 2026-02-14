@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         migobote auto poll
 // @namespace    http://tampermonkey.net/
-// @version      2026.2
+// @version      2026.3
 // @description  Automatically fetches streams from holodex and presents a popup with valid streams to poll
 // @author       You
 // @match        https://om3tcw.com/r/*
@@ -17,9 +17,10 @@
   const AP_TOPIC_FIRST = false;
   const EXCLUDED_TOPICS = new Set(['membersonly', 'membership', 'Original_Song', 'Music_Cover', 'watchalong']);
   const ADDED_OPTION_SELECTOR = '.poll-menu-option[data-autopoll-added="1"]';
+  const INCLUDE_MALES_KEY = 'holodex_include_males';
 
   let API_KEY = GM_getValue('holodex_api_key');
-  let includeMales = false;
+  let includeMales = Boolean(GM_getValue(INCLUDE_MALES_KEY, false));
 
   function checkApiKey() {
     if (API_KEY) {
@@ -236,6 +237,7 @@
     toggleInput.checked = includeMales;
     toggleInput.addEventListener('change', function() {
       includeMales = this.checked;
+      GM_setValue(INCLUDE_MALES_KEY, includeMales);
     });
 
     const hideLabel = Array.from(pollMenu.querySelectorAll('label')).find((label) => label.textContent.includes('Hide poll results until it closes'));
