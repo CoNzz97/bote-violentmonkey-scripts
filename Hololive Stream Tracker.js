@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name Hololive Stream Tracker
 // @namespace holodex.tracker
-// @version 2.7.0
+// @version 2.8.1
 // @description Shows streams
 // @match https://om3tcw.com/r/*
 // @grant GM_xmlhttpRequest
@@ -15,7 +15,16 @@
   'use strict';
 
   // --- API Configuration ---
-  let API_KEY = GM_getValue('holodex_api_key');
+  const STORAGE_KEYS = {
+    apiKey: 'holodex_api_key',
+    includeMales: 'holodex_include_males'
+  };
+  const IDS = {
+    overlay: 'holodex-overlay',
+    toggleButton: 'holodex-toggle-btn'
+  };
+
+  let API_KEY = GM_getValue(STORAGE_KEYS.apiKey);
   const API_BASE = 'https://holodex.net/api/v2';
   const MAX_UPCOMING = 75;
 
@@ -46,6 +55,7 @@
   let currentStreams = [];
   let currentFilter = 'All';
   let showUpcomingOnly = false;
+  let includeMales = GM_getValue(STORAGE_KEYS.includeMales, false);
 
   // --- Helper Functions ---
 
@@ -53,7 +63,7 @@
     if (!API_KEY) {
       const key = prompt('Please enter your Holodex API Key:\n(Found in Settings -> API Key on holodex.net)');
       if (key) {
-        GM_setValue('holodex_api_key', key);
+        GM_setValue(STORAGE_KEYS.apiKey, key);
         API_KEY = key;
         return true;
       }
@@ -64,13 +74,13 @@
 
   function resetApiKey() {
     if (confirm('Do you want to reset your Holodex API Key?')) {
-      GM_setValue('holodex_api_key', '');
+      GM_setValue(STORAGE_KEYS.apiKey, '');
       API_KEY = '';
       fetchUpcomingStreams();
     }
   }
 
-  function isHololive(channel) {
+  function isHololive(channel, allowHolostars = false) {
     if (!channel) return false;
     const name = (channel.name || '').toLowerCase();
     const enName = (channel.english_name || '').toLowerCase();
@@ -78,7 +88,7 @@
     const suborg = (channel.suborg || '').toLowerCase();
 
     const isHolostars = /holostars/i.test(name + enName + org + suborg) || /ホロスターズ/i.test(name);
-    if (isHolostars) return false;
+    if (isHolostars && !allowHolostars) return false;
 
     return (
       org.includes('hololive') || suborg.includes('hololive') ||
@@ -162,7 +172,7 @@
       const matches = combined.filter(v => {
         if (seen.has(v.id)) return false;
         seen.add(v.id);
-        return isHololive(v.channel) && v.status !== 'past';
+        return isHololive(v.channel, includeMales) && v.status !== 'past';
       });
 
       // Sort: Live first, then by scheduled time
@@ -180,11 +190,11 @@
   }
 
   function renderOverlay() {
-    const old = document.getElementById('holodex-overlay');
+    const old = document.getElementById(IDS.overlay);
     if (old) old.remove();
 
     const box = document.createElement('div');
-    box.id = 'holodex-overlay';
+    box.id = IDS.overlay;
 
     const header = document.createElement('div');
     header.style.display = 'flex';
@@ -206,6 +216,17 @@
     const controls = document.createElement('div');
     controls.style.display = 'flex';
     controls.style.alignItems = 'center';
+
+    const includeMalesLabel = document.createElement('label');
+    includeMalesLabel.style.fontSize = '11px';
+    includeMalesLabel.style.marginRight = '8px';
+    includeMalesLabel.style.cursor = 'pointer';
+    includeMalesLabel.innerHTML = `<input type="checkbox" id="include-males-toggle" ${includeMales ? 'checked' : ''} style="vertical-align: middle;"> Include Males`;
+    includeMalesLabel.querySelector('input').addEventListener('change', (e) => {
+        includeMales = e.target.checked;
+        GM_setValue(STORAGE_KEYS.includeMales, includeMales);
+        fetchUpcomingStreams();
+    });
 
     const upcomingLabel = document.createElement('label');
     upcomingLabel.style.fontSize = '11px';
@@ -240,7 +261,7 @@
     resetBtn.style.marginLeft = '5px';
     resetBtn.addEventListener('click', resetApiKey);
 
-    controls.append(upcomingLabel, select, refreshBtn, resetBtn);
+    controls.append(includeMalesLabel, upcomingLabel, select, refreshBtn, resetBtn);
     header.append(title, controls);
     box.appendChild(header);
 
@@ -266,7 +287,11 @@
       box.appendChild(p);
     }
 
-    document.getElementById('tools-content-area').appendChild(box);
+    const contentArea = document.getElementById('tools-content-area');
+    if (!contentArea) {
+      return;
+    }
+    contentArea.appendChild(box);
   }
 
   function createToggleButton() {
@@ -275,14 +300,17 @@
       setTimeout(createToggleButton, 500);
       return;
     }
+    if (document.getElementById(IDS.toggleButton)) {
+      return;
+    }
     const btn = document.createElement('button');
-    btn.id = 'holodex-toggle-btn';
+    btn.id = IDS.toggleButton;
     btn.textContent = '🎤';
     btn.classList.add('btn', 'btn-sm', 'btn-default');
     btn.style.marginLeft = '5px';
 
     btn.addEventListener('click', () => {
-      const overlay = document.getElementById('holodex-overlay');
+      const overlay = document.getElementById(IDS.overlay);
       if (overlay) {
         overlay.remove();
         btn.classList.remove('active');
@@ -306,7 +334,7 @@
     #holodex-overlay a:hover { text-decoration: underline !important; color: #6c5ce7 !important; }
     #holodex-toggle-btn.active { background: #6c5ce7 !important; color: white; }
     #holodex-overlay select, #holodex-overlay button { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 2px 5px; cursor: pointer; }
-    #upcoming-toggle { margin-right: 4px; }
+    #include-males-toggle, #upcoming-toggle { margin-right: 4px; }
   `);
 
   createToggleButton();

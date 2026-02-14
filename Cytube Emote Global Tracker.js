@@ -1,15 +1,14 @@
 // ==UserScript==
-// @name         Cytube Emote Global & User tracker+ (Tools Tab Integration)
+// @name         Cytube Emote Global Tracker
 // @namespace    http://tampermonkey.net/
-// @version      7.8
-// @description  Optimized chat logger with global emote counter and UK date formatting, fully integrated into Tools tab
-// @author       You + Grok
+// @version      7.12
+// @description  Emote tracker
+// @author       You
 // @match        https://om3tcw.com/*
 // @grant        GM_download
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_addStyle
-// @grant        unsafeWindow
 // ==/UserScript==
 
 (function() {
@@ -70,6 +69,8 @@
         statsWindow: null,
         settingsWindow: null,
         menuDiv: null,
+        toolsContentOriginalMaxHeight: null,
+        toolsContentOriginalHeight: null,
         isPreviewVisible: false,
         isStatsVisible: false,
         isSettingsVisible: false,
@@ -102,11 +103,12 @@
         #cytube-logger-menu button { margin:0 5px 5px 0; }
         #cytube-chat-preview, #cytube-stats-preview, #cytube-logger-settings {
             background:#1a1a1a; border:1px solid #333; border-radius:8px; margin-bottom:15px;
-            display:none; flex-direction:column; color:#ddd; font-family:Arial,sans-serif; max-height:500px; overflow:hidden;
+            display:none; flex-direction:column; color:#ddd; font-family:Arial,sans-serif;
+            width:100%; min-height:240px; box-sizing:border-box; overflow:hidden;
         }
         .logger-header { padding:12px; background:#252525; border-bottom:1px solid #383838; display:flex; justify-content:space-between; align-items:center; }
-        .logger-close { cursor:pointer; font-size:18px; }
-        .logger-content { flex:1; overflow-y:auto; padding:12px; }
+        .logger-close { cursor:pointer; font-size:18px; background:transparent; border:0; color:inherit; line-height:1; padding:0; }
+        .logger-content { flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px; }
         .stats-tabs { display:flex; background:#2a2a2a; border-bottom:1px solid #383838; }
         .stats-tab { flex:1; padding:10px; text-align:center; cursor:pointer; border-bottom:2px solid transparent; }
         .stats-tab.active { border-bottom-color:#9C27B0; background:#333; color:#fff; }
@@ -124,8 +126,9 @@
     `;
 
     function openToolsTab() {
-        $('#channelsettings').modal('show');
-        $('a[href="#toolsTab"]').tab('show');
+        if (typeof $ !== 'undefined') {
+            $('a[href="#toolsTab"]').tab('show');
+        }
     }
 
     function toggleMenu() {
@@ -134,7 +137,66 @@
             const visible = state.menuDiv.style.display === 'block';
             state.menuDiv.style.display = visible ? 'none' : 'block';
             document.getElementById('cytube-logger-toggle')?.classList.toggle('active', !visible);
+            applyPanelLayouts();
         }
+    }
+
+    function getPanelHeight() {
+        const contentArea = document.getElementById('tools-content-area');
+        if (!contentArea) return 320;
+
+        const styles = window.getComputedStyle(contentArea);
+        const paddingTop = parseFloat(styles.paddingTop) || 0;
+        const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+        const menuHeight = state.menuDiv && state.menuDiv.style.display !== 'none' ? state.menuDiv.offsetHeight + 10 : 0;
+        const available = contentArea.clientHeight - paddingTop - paddingBottom - menuHeight - 6;
+        return Math.max(240, available);
+    }
+
+    function setToolsAreaExpanded(expanded) {
+        const contentArea = document.getElementById('tools-content-area');
+        if (!contentArea) return;
+        if (state.toolsContentOriginalMaxHeight === null) {
+            state.toolsContentOriginalMaxHeight = contentArea.style.maxHeight || '';
+        }
+        if (state.toolsContentOriginalHeight === null) {
+            state.toolsContentOriginalHeight = contentArea.style.height || '';
+        }
+
+        if (expanded) {
+            contentArea.style.maxHeight = '72vh';
+            contentArea.style.height = '72vh';
+        } else {
+            contentArea.style.maxHeight = state.toolsContentOriginalMaxHeight;
+            contentArea.style.height = state.toolsContentOriginalHeight;
+        }
+    }
+
+    function applyPanelLayouts() {
+        const panelHeight = getPanelHeight();
+        [state.previewWindow, state.statsWindow, state.settingsWindow].forEach(panel => {
+            if (!panel) return;
+            panel.style.height = `${panelHeight}px`;
+            panel.style.maxHeight = `${panelHeight}px`;
+        });
+    }
+
+    function stopStatsRefresh() {
+        if (state.statsRefreshInterval) {
+            clearInterval(state.statsRefreshInterval);
+            state.statsRefreshInterval = null;
+        }
+    }
+
+    function hideAllPanels() {
+        setToolsAreaExpanded(false);
+        if (state.previewWindow) state.previewWindow.style.display = 'none';
+        if (state.statsWindow) state.statsWindow.style.display = 'none';
+        if (state.settingsWindow) state.settingsWindow.style.display = 'none';
+        state.isPreviewVisible = false;
+        state.isStatsVisible = false;
+        state.isSettingsVisible = false;
+        stopStatsRefresh();
     }
 
     function createPreviewWindow() {
@@ -144,12 +206,16 @@
         state.previewWindow.innerHTML = `
             <div class="logger-header">
                 <span>Chat Log Preview</span>
-                <span class="logger-close" onclick="document.getElementById('cytube-chat-preview').style.display='none'; state.isPreviewVisible=false;">×</span>
+                <button type="button" class="logger-close" data-logger-close="preview">×</button>
             </div>
             <div class="logger-content" id="cytube-chat-preview-content"></div>
         `;
         document.getElementById('tools-content-area').appendChild(state.previewWindow);
         domCache.previewContent = document.getElementById('cytube-chat-preview-content');
+        applyPanelLayouts();
+        state.previewWindow.querySelector('[data-logger-close="preview"]')?.addEventListener('click', () => {
+            hideAllPanels();
+        });
     }
 
     function createStatsWindow() {
@@ -159,7 +225,7 @@
         state.statsWindow.innerHTML = `
             <div class="logger-header">
                 <span>Emote Statistics</span>
-                <span class="logger-close" onclick="document.getElementById('cytube-stats-preview').style.display='none'; state.isStatsVisible=false; if(state.statsRefreshInterval) clearInterval(state.statsRefreshInterval);">×</span>
+                <button type="button" class="logger-close" data-logger-close="stats">×</button>
             </div>
             <div class="stats-tabs">
                 <div class="stats-tab active" data-tab="global">Global</div>
@@ -170,6 +236,10 @@
         `;
         document.getElementById('tools-content-area').appendChild(state.statsWindow);
         domCache.statsContent = document.getElementById('cytube-stats-preview-content');
+        applyPanelLayouts();
+        state.statsWindow.querySelector('[data-logger-close="stats"]')?.addEventListener('click', () => {
+            hideAllPanels();
+        });
 
         // Tab switching
         state.statsWindow.querySelectorAll('.stats-tab').forEach(tab => {
@@ -195,7 +265,7 @@
         state.settingsWindow.innerHTML = `
             <div class="logger-header">
                 <span>Logger Settings</span>
-                <span class="logger-close" onclick="document.getElementById('cytube-logger-settings').style.display='none'; state.isSettingsVisible=false;">×</span>
+                <button type="button" class="logger-close" data-logger-close="settings">×</button>
             </div>
             <div class="logger-content">
                 <div style="margin-bottom:10px;"><strong>Display Limits</strong></div>
@@ -208,39 +278,55 @@
         `;
         document.getElementById('tools-content-area').appendChild(state.settingsWindow);
         document.getElementById('logger-save-settings').addEventListener('click', saveSettings);
+        applyPanelLayouts();
+        state.settingsWindow.querySelector('[data-logger-close="settings"]')?.addEventListener('click', () => {
+            hideAllPanels();
+        });
     }
 
     function togglePreview() {
         openToolsTab();
-        state.isPreviewVisible = !state.isPreviewVisible;
+        if (state.isPreviewVisible) {
+            hideAllPanels();
+            return;
+        }
+        hideAllPanels();
         createPreviewWindow();
-        state.previewWindow.style.display = state.isPreviewVisible ? 'flex' : 'none';
-        if (state.isPreviewVisible) updatePreview();
+        applyPanelLayouts();
+        state.isPreviewVisible = true;
+        state.previewWindow.style.display = 'flex';
+        updatePreview();
     }
 
     function toggleStats() {
         openToolsTab();
-        state.isStatsVisible = !state.isStatsVisible;
-        createStatsWindow();
-        state.statsWindow.style.display = state.isStatsVisible ? 'flex' : 'none';
         if (state.isStatsVisible) {
-            updateStatsPreview();
-            if (state.statsRefreshInterval) clearInterval(state.statsRefreshInterval);
-            state.statsRefreshInterval = setInterval(updateStatsPreview, CONFIG.AUTO_REFRESH_STATS);
-        } else if (state.statsRefreshInterval) {
-            clearInterval(state.statsRefreshInterval);
-            state.statsRefreshInterval = null;
+            hideAllPanels();
+            return;
         }
+        hideAllPanels();
+        setToolsAreaExpanded(true);
+        createStatsWindow();
+        applyPanelLayouts();
+        state.isStatsVisible = true;
+        state.statsWindow.style.display = 'flex';
+        updateStatsPreview();
+        stopStatsRefresh();
+        state.statsRefreshInterval = setInterval(updateStatsPreview, CONFIG.AUTO_REFRESH_STATS);
     }
 
     function toggleSettings() {
         openToolsTab();
-        state.isSettingsVisible = !state.isSettingsVisible;
+        if (state.isSettingsVisible) {
+            hideAllPanels();
+            return;
+        }
+        hideAllPanels();
         createSettingsWindow();
-        state.settingsWindow.style.display = state.isSettingsVisible ? 'flex' : 'none';
+        applyPanelLayouts();
+        state.isSettingsVisible = true;
+        state.settingsWindow.style.display = 'flex';
     }
-
-    // Your existing processMessage, handleProcessedMessage, scanMessagesOnce, updatePreview, updateStatsPreview (global + user), saveSettings, saveSilently, exportEmoteStats, getFormattedDate
 
     function processMessage(element) {
         if (element.hasAttribute('data-logger-processed')) return null;
@@ -310,6 +396,9 @@
     function updatePreview() {
         const startTime = Date.now();
         if (!domCache.previewContent) return;
+        const previewEl = domCache.previewContent;
+        const previousOffsetFromBottom = previewEl.scrollHeight - previewEl.scrollTop - previewEl.clientHeight;
+        const wasNearBottom = previousOffsetFromBottom <= 24;
         const messagesToShow = state.messages.slice(-state.displayLimits.previewMessages);
         let html = '';
         for (const msg of messagesToShow) {
@@ -321,8 +410,13 @@
                 <span class="cytube-logger-content">${msg.content}</span>
             </div>`;
         }
-        domCache.previewContent.innerHTML = html;
-        domCache.previewContent.scrollTop = domCache.previewContent.scrollHeight;
+        previewEl.innerHTML = html;
+        if (wasNearBottom) {
+            previewEl.scrollTop = previewEl.scrollHeight;
+        } else {
+            const targetScrollTop = previewEl.scrollHeight - previewEl.clientHeight - previousOffsetFromBottom;
+            previewEl.scrollTop = Math.max(0, targetScrollTop);
+        }
         logPerformance('updatePreview', startTime);
     }
 
@@ -505,6 +599,7 @@
         }
         state.saveInterval = setInterval(saveSilently, CONFIG.AUTO_SAVE_INTERVAL);
         window.addEventListener('beforeunload', saveSilently);
+        window.addEventListener('resize', applyPanelLayouts);
     }
 
     if (document.readyState === 'loading') {
