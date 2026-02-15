@@ -360,11 +360,14 @@
 
   function findMatches(text) {
     const matches = [];
-    const lowered = text.toLowerCase();
 
     state.settings.keywords.forEach((keyword) => {
-      const needle = keyword.toLowerCase();
-      if (needle && lowered.includes(needle)) {
+      const keywordText = keyword.trim();
+      if (!keywordText) {
+        return;
+      }
+      const keywordRegex = new RegExp(`(^|\\W)${escapeRegExp(keywordText)}(\\W|$)`, 'i');
+      if (keywordRegex.test(text)) {
         matches.push({ type: 'keyword', value: keyword });
       }
     });
@@ -603,7 +606,7 @@
         Enable alerts
       </label>
       <label class="cytube-tools-alerts-block">
-        Keywords (comma or newline separated)
+        Keywords (whole words/phrases, comma or newline separated)
         <textarea id="${UI_IDS.keywords}" rows="4" class="form-control"></textarea>
       </label>
       <label class="cytube-tools-alerts-block">
