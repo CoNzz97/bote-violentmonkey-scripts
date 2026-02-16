@@ -280,6 +280,94 @@ Suggested key format:
 
 ---
 
+
+---
+
+## Hover-injected DOM elements (ephemeral mutations)
+
+Some Cytube UI elements **mutate their own DOM on hover** rather than using separate tooltip nodes.
+These elements will appear “normal” in the Elements tab unless they are actively hovered.
+
+### Known pattern: `#usercount` hover profile box
+
+- Base element:
+  - `#usercount` (`<span class="pointer" id="usercount">`)
+- On hover:
+  - Cytube **injects a child `<div class="profile-box">` directly inside `#usercount`**
+  - This node is removed on mouseleave
+- The injected node:
+  - Is repositioned on every mousemove
+  - Cannot be reliably inspected via Elements tab
+  - Must be captured via console timing or runtime observers
+
+Example hover-expanded structure:
+
+```html
+<span id="usercount" class="pointer">
+  46 connected users
+  <div class="profile-box">
+    <strong>Site Admins:</strong> 0<br>
+    <strong>Channel Admins:</strong> 4<br>
+    <strong>Moderators:</strong> 12<br>
+    <strong>Regular Users:</strong> 21<br>
+    <strong>Guests:</strong> 2<br>
+    <strong>Anonymous:</strong> 7<br>
+    <strong>AFK:</strong> 27<br>
+  </div>
+</span>
+```
+
+### Rules for scripts
+
+- Do **not** assume `.profile-box` exists persistently
+- Always query **inside** `#usercount`
+- Never move or detach the injected node
+- If you need the data:
+  - read it while hovered, or
+  - recreate your own UI using socket/userlist state
+
+See: `docs/cytube-usercount-hover-profile-box.md`
+
+
+
+## Userlist username hover dropdown
+
+Hovering a user’s name in `#userlist` injects (or reveals) a per-user action menu:
+
+- Container: `.userlist_item` (e.g. `#useritem-Kusa`)
+- Popup: `.user-dropdown` (usually `style="display: none;"` until Cytube toggles it)
+
+Example (as observed):
+
+```html
+<div class="userlist_item" id="useritem-Kusa">
+  <span></span>
+  <span class="userlist_owner userlist-Kusa">Kusa</span>
+  <div class="user-dropdown" style="display: none;">
+    <strong>Kusa</strong><br>
+    <div class="btn-group-vertical">
+      <button class="btn btn-xs btn-default">Ignore User</button>
+      <button class="btn btn-xs btn-default">Private Message</button>
+      <button class="btn btn-xs btn-default">Give Leader</button>
+      <button class="btn btn-xs btn-default">Kick</button>
+      <button class="btn btn-xs btn-default">Mute</button>
+      <button class="btn btn-xs btn-default">Shadow Mute</button>
+      <button class="btn btn-xs btn-default" style="display: none;">Unmute</button>
+    </div>
+  </div>
+</div>
+```
+
+### Rules for scripts
+
+- Do **not** assume `.user-dropdown` is visible (or even present) at all times
+- Always query **inside** the `.userlist_item` you’re operating on
+- Never move/detach Cytube’s `.user-dropdown`
+- Don’t rely on the username being present in a CSS class (e.g. `.userlist-Kusa`) — use `id="useritem-<name>"` or the inner text
+
+See: `docs/cytube-userlist-hover-user-dropdown.md`
+
+
 ## Practical repo suggestions
 
 1. **Standardize on max-retry waiters**  
