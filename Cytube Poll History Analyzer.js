@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cytube Poll History Analyzer
 // @namespace    cytube.poll.history.analyzer
-// @version      1.0
+// @version      1.2
 // @description  Parse poll history, group name aliases, and track soft winners
 // @match        https://om3tcw.com/r/*
 // @grant        GM_addStyle
@@ -18,6 +18,7 @@
   const RETRY_DELAY_MS = 500;
   const MAX_RETRIES = 120;
   const RECORD_LIMIT = 1000;
+  const HASH_BUCKET_MS = 6 * 60 * 60 * 1000;
 
   const STORAGE_KEYS = {
     settings: 'cytube:poll-history-analyzer:settings',
@@ -195,6 +196,50 @@
     return `h${Math.abs(hash)}`;
   }
 
+  function extractPollClockToken(text) {
+    const match = String(text || '').match(/\b([01]?\d|2[0-3]):[0-5]\d:[0-5]\d\b/);
+    return match ? match[0] : '';
+  }
+
+  function normalizeTitleForHash(text) {
+    const prepared = String(text || '')
+      .replace(/\b([01]?\d|2[0-3]):[0-5]\d:[0-5]\d\b/g, ' ')
+      .replace(/\bend\s*poll\b/gi, ' ')
+      .replace(/\bpoll\b/gi, ' ')
+      .replace(/\d+/g, ' ');
+    return normalizeText(prepared);
+  }
+
+  function buildRecordHashInput(base, createdAt, options) {
+    const safeBase = base && typeof base === 'object' ? base : {};
+    const safeOptions = Array.isArray(options) ? options : [];
+    const optionKeys = Array.from(new Set(
+      safeOptions
+        .map((option) => normalizeText((option && (option.canonicalKey || option.rawLabel)) || ''))
+        .filter(Boolean)
+    )).sort();
+    const pollClock = extractPollClockToken(`${safeBase.title || ''} ${safeBase.rawSnippet || ''}`);
+    const normalizedTitle = normalizeTitleForHash(safeBase.title || '');
+    const normalizedSnippet = normalizeText(safeBase.rawSnippet || '').slice(0, 120);
+    const bucket = Number.isFinite(createdAt) ? Math.floor(createdAt / HASH_BUCKET_MS) : 0;
+
+    return [
+      optionKeys.join('|') || normalizedTitle || normalizedSnippet,
+      pollClock ? `clock:${pollClock}` : `bucket:${bucket}`,
+      optionKeys.length ? normalizedTitle : normalizedSnippet
+    ].join('::');
+  }
+
+  function winnerModeRank(mode) {
+    if (mode === 'official') {
+      return 3;
+    }
+    if (mode === 'soft') {
+      return 2;
+    }
+    return 1;
+  }
+
   function titleCase(text) {
     return String(text || '')
       .split(' ')
@@ -305,7 +350,32 @@
       return Number(countInParens[1]);
     }
 
+    // Cytube poll rows sometimes render as compact prefix counts like "3Korone Song".
+    const compactPrefix = raw.match(/^(\d+)(?=[^\d\s])/);
+    if (compactPrefix) {
+      const count = Number(compactPrefix[1]);
+      if (Number.isFinite(count) && count <= 999) {
+        return count;
+      }
+    }
+
     return null;
+  }
+
+  function stripVotePrefixFromLabel(rawLabel, votes) {
+    let label = String(rawLabel || '').replace(/\s+/g, ' ').trim();
+    if (!label) {
+      return '';
+    }
+    if (!Number.isFinite(votes)) {
+      return label;
+    }
+    label = label
+      .replace(new RegExp(`^\\s*${votes}(?=[^\\d\\s])`), '')
+      .replace(new RegExp(`^\\s*${votes}\\s*[|:\\-]\\s*`), '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return label || String(rawLabel || '').replace(/\s+/g, ' ').trim();
   }
 
   function extractOptionFromElement(optionEl) {
@@ -334,10 +404,13 @@
     let label = rawText;
     if (Number.isFinite(votes)) {
       label = label
+        .replace(new RegExp(`^\\s*${votes}(?=[^\\d\\s])`), '')
+        .replace(new RegExp(`^\\s*${votes}\\s*[|:\\-]\\s*`), '')
         .replace(new RegExp(`\\b${votes}\\b\\s*votes?\\b`, 'i'), '')
         .replace(new RegExp(`\\(\\s*${votes}\\s*(?:votes?)?\\s*\\)`, 'i'), '')
         .replace(/\s+/g, ' ')
         .trim();
+      label = stripVotePrefixFromLabel(label, votes);
     }
     if (!label) {
       label = rawText;
@@ -447,15 +520,7 @@
     const winnerSoftRaw = String(base.winnerSoftRaw || '').trim() || null;
     const winnerMode = winnerOfficialRaw ? 'official' : (winnerSoftRaw ? 'soft' : 'none');
 
-    const signature = [
-      normalizeText(base.title),
-      safeOptions.map((option) => option.canonicalKey).join('|'),
-      normalizeText(winnerOfficialRaw || winnerSoftRaw || ''),
-      base.source || 'history',
-      normalizeText(base.signatureExtra || '')
-    ].join('::');
-
-    const hash = simpleHash(signature);
+    const hash = simpleHash(buildRecordHashInput(base, createdAt, safeOptions));
     const winnerOfficialGroup = winnerOfficialRaw ? getGroupedKey(winnerOfficialRaw) : null;
     const winnerSoftGroup = winnerSoftRaw ? getGroupedKey(winnerSoftRaw) : null;
 
@@ -514,7 +579,10 @@
     const winnerOfficialRaw = raw.winnerOfficialRaw ? String(raw.winnerOfficialRaw).trim() : null;
     const winnerSoftRaw = raw.winnerSoftRaw ? String(raw.winnerSoftRaw).trim() : null;
     const winnerMode = winnerOfficialRaw ? 'official' : (winnerSoftRaw ? 'soft' : 'none');
-    const hash = String(raw.hash || simpleHash(`${title}|${createdAt}`));
+    const hash = simpleHash(buildRecordHashInput({
+      title,
+      rawSnippet: String(raw.rawSnippet || '')
+    }, createdAt, options));
 
     return {
       id: String(raw.id || `${hash}-${createdAt}`),
@@ -547,13 +615,17 @@
 
   function loadRecords() {
     const parsed = parseStoredArray(safeGetValue(STORAGE_KEYS.records, []));
-    const clean = [];
+    const deduped = new Map();
     parsed.forEach((record) => {
       const sanitized = sanitizeRecord(record);
       if (sanitized) {
-        clean.push(sanitized);
+        const existing = deduped.get(sanitized.hash);
+        if (!existing || winnerModeRank(sanitized.winnerMode) > winnerModeRank(existing.winnerMode)) {
+          deduped.set(sanitized.hash, sanitized);
+        }
       }
     });
+    const clean = Array.from(deduped.values());
     clean.sort((a, b) => b.createdAt - a.createdAt);
     if (clean.length > RECORD_LIMIT) {
       clean.length = RECORD_LIMIT;
@@ -630,7 +702,30 @@
       return false;
     }
     if (state.recordHashes.has(sanitized.hash)) {
-      return false;
+      const existingIndex = state.records.findIndex((entry) => entry.hash === sanitized.hash);
+      if (existingIndex < 0) {
+        return false;
+      }
+      const existing = state.records[existingIndex];
+      if (winnerModeRank(sanitized.winnerMode) <= winnerModeRank(existing.winnerMode)) {
+        return false;
+      }
+
+      const upgraded = sanitizeRecord({
+        ...existing,
+        ...sanitized,
+        createdAt: Math.min(existing.createdAt, sanitized.createdAt),
+        hash: existing.hash
+      });
+      if (!upgraded) {
+        return false;
+      }
+      upgraded.hash = existing.hash;
+      upgraded.id = `${existing.hash}-${upgraded.createdAt}`;
+      state.records[existingIndex] = upgraded;
+      persistRecords();
+      renderStatsAndList();
+      return true;
     }
 
     state.records.unshift(sanitized);
@@ -643,6 +738,17 @@
     persistRecords();
     renderStatsAndList();
     return true;
+  }
+
+  function buildActivePollSignature(snapshot, referenceTs) {
+    if (!snapshot || !Array.isArray(snapshot.options)) {
+      return '';
+    }
+    const ts = Number(referenceTs) || Date.now();
+    return simpleHash(buildRecordHashInput({
+      title: snapshot.title,
+      rawSnippet: snapshot.rawSnippet
+    }, ts, snapshot.options));
   }
 
   function parsePollNode(node, source = 'history') {
@@ -741,7 +847,9 @@
     }
 
     const title = extractTitle(pollWrap);
-    const options = Array.from(pollWrap.querySelectorAll('.poll-option, .option, li'))
+    const options = Array.from(
+      pollWrap.querySelectorAll('.poll-option, .option, .poll-option-item, li, .poll_result, .result')
+    )
       .map((node) => extractOptionFromElement(node))
       .filter(Boolean);
 
@@ -752,46 +860,157 @@
     return {
       title,
       options,
-      signature: `${normalizeText(title)}|${options.map((option) => option.canonicalKey).join('|')}`,
       rawSnippet: pollWrap.textContent.replace(/\s+/g, ' ').trim()
     };
   }
 
+  function getOptionVote(option) {
+    if (!option || typeof option !== 'object') {
+      return null;
+    }
+    if (Number.isFinite(option.votes)) {
+      return Number(option.votes);
+    }
+    const fallbackVotes = extractVotesFromText(option.rawLabel);
+    return Number.isFinite(fallbackVotes) ? Number(fallbackVotes) : null;
+  }
+
   function determineSoftWinner(options) {
-    const voted = options.filter((option) => Number.isFinite(option.votes));
+    const voted = options
+      .map((option) => {
+        const votes = getOptionVote(option);
+        if (!Number.isFinite(votes)) {
+          return null;
+        }
+        return { option, votes };
+      })
+      .filter(Boolean);
     if (!voted.length) {
       return { winner: null, tie: false };
     }
 
     let max = -1;
-    voted.forEach((option) => {
-      if (option.votes > max) {
-        max = option.votes;
+    voted.forEach((entry) => {
+      if (entry.votes > max) {
+        max = entry.votes;
       }
     });
-    const winners = voted.filter((option) => option.votes === max);
+    const winners = voted.filter((entry) => entry.votes === max);
     if (!winners.length) {
       return { winner: null, tie: false };
     }
     if (winners.length === 1) {
-      return { winner: winners[0].rawLabel, tie: false };
+      const winnerLabel = stripVotePrefixFromLabel(winners[0].option.rawLabel, winners[0].votes);
+      return { winner: winnerLabel, tie: false };
     }
-    return { winner: winners.map((entry) => entry.rawLabel).join(' | '), tie: true };
+    return {
+      winner: winners.map((entry) => stripVotePrefixFromLabel(entry.option.rawLabel, entry.votes)).join(' | '),
+      tie: true
+    };
+  }
+
+  function findLatestNoWinnerRecord() {
+    return state.records.find((record) => (
+      record
+      && record.winnerMode === 'none'
+      && Array.isArray(record.options)
+      && record.options.length >= 2
+    )) || null;
+  }
+
+  function captureSoftWinnerFromRecord(record, reason = 'manual-history') {
+    if (!record || !Array.isArray(record.options) || record.options.length < 2) {
+      return false;
+    }
+
+    const soft = determineSoftWinner(record.options);
+    if (!soft.winner) {
+      return false;
+    }
+
+    const signatureKey = `${record.hash}|${reason}`;
+    if (state.completedSoftSignatures.has(signatureKey)) {
+      return false;
+    }
+
+    const optionsWithVotes = record.options.map((option) => {
+      const votes = getOptionVote(option);
+      return {
+        ...option,
+        votes: Number.isFinite(votes) ? votes : null
+      };
+    });
+
+    const softRecord = createRecord({
+      source: 'history-soft',
+      createdAt: Date.now(),
+      title: record.title,
+      options: optionsWithVotes,
+      winnerSoftRaw: soft.winner,
+      softTie: soft.tie,
+      signatureExtra: signatureKey,
+      rawSnippet: record.rawSnippet
+    });
+
+    if (addRecord(softRecord)) {
+      state.completedSoftSignatures.add(signatureKey);
+      return true;
+    }
+    return false;
   }
 
   function captureSoftWinner(reason = 'timer') {
+    const isManual = reason === 'manual';
     const snapshot = parseActivePollSnapshot();
     if (!snapshot) {
+      if (isManual) {
+        const fallbackRecord = findLatestNoWinnerRecord();
+        if (fallbackRecord) {
+          captureSoftWinnerFromRecord(fallbackRecord, 'manual-history');
+        }
+      }
+      return;
+    }
+
+    const signatureTs = state.activePollFirstSeenTs || Date.now();
+    const snapshotSignature = buildActivePollSignature(snapshot, signatureTs);
+    if (!snapshotSignature) {
       return;
     }
 
     const expectedSignature = state.activePollSignature;
-    if (!expectedSignature || snapshot.signature !== expectedSignature) {
+    if (!isManual && (!expectedSignature || snapshotSignature !== expectedSignature)) {
+      return;
+    }
+    if (isManual && (!expectedSignature || snapshotSignature !== expectedSignature)) {
+      const manualTs = state.activePollFirstSeenTs || Date.now();
+      state.activePollFirstSeenTs = manualTs;
+      state.activePollSignature = buildActivePollSignature(snapshot, manualTs);
+      if (!state.activePollSignature) {
+        return;
+      }
+    }
+    const activeSignature = state.activePollSignature || snapshotSignature;
+
+    const soft = determineSoftWinner(snapshot.options);
+    if (!soft.winner) {
+      if (isManual) {
+        const fallbackRecord = findLatestNoWinnerRecord();
+        if (fallbackRecord) {
+          captureSoftWinnerFromRecord(fallbackRecord, 'manual-history');
+        }
+      }
       return;
     }
 
-    const soft = determineSoftWinner(snapshot.options);
-    const signatureKey = `${snapshot.signature}|${state.activePollFirstSeenTs}`;
+    const voteSignature = snapshot.options
+      .map((option) => {
+        const votes = getOptionVote(option);
+        return Number.isFinite(votes) ? String(votes) : 'x';
+      })
+      .join('|');
+    const firstSeenKey = state.activePollFirstSeenTs || 'manual';
+    const signatureKey = `${activeSignature}|${firstSeenKey}|${voteSignature}`;
     if (state.completedSoftSignatures.has(signatureKey)) {
       return;
     }
@@ -827,12 +1046,18 @@
       return;
     }
 
-    if (snapshot.signature === state.activePollSignature) {
+    const nowTs = Date.now();
+    const snapshotSignature = buildActivePollSignature(snapshot, nowTs);
+    if (!snapshotSignature) {
       return;
     }
 
-    state.activePollSignature = snapshot.signature;
-    state.activePollFirstSeenTs = Date.now();
+    if (snapshotSignature === state.activePollSignature) {
+      return;
+    }
+
+    state.activePollSignature = snapshotSignature;
+    state.activePollFirstSeenTs = nowTs;
     scheduleSoftWinner(snapshot);
   }
 
