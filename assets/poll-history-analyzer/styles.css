@@ -1,0 +1,243 @@
+#poll-history-analyzer-toggle.active {
+  background: #337ab7 !important;
+  border-color: #2e6da4 !important;
+  color: #fff !important;
+}
+
+.cytube-tools-poll-history-analyzer-panel {
+  display: none;
+  padding: 10px;
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #ddd;
+  margin-bottom: 10px;
+}
+
+.cytube-tools-poll-history-analyzer-head {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.cytube-tools-poll-history-analyzer-line {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: normal;
+}
+
+.cytube-tools-poll-history-analyzer-block {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: normal;
+}
+
+.cytube-tools-poll-history-analyzer-advanced {
+  margin-bottom: 8px;
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+  padding: 6px;
+  background: #171717;
+}
+
+.cytube-tools-poll-history-analyzer-advanced > summary {
+  cursor: pointer;
+  color: #cfd4db;
+  user-select: none;
+  outline: none;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.cytube-tools-poll-history-analyzer-advanced[open] > summary {
+  margin-bottom: 8px;
+}
+
+.cytube-tools-poll-history-analyzer-advanced-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 2px;
+}
+
+.cytube-tools-poll-history-analyzer-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: normal;
+}
+
+.cytube-tools-poll-history-analyzer-controls {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  margin-bottom: 8px;
+}
+
+.cytube-tools-poll-history-analyzer-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.cytube-tools-poll-history-analyzer-stats {
+  font-size: 12px;
+  color: #cfd4db;
+  margin-bottom: 8px;
+  background: #171717;
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+  padding: 6px;
+  word-break: break-word;
+}
+
+.cytube-tools-poll-history-analyzer-winnerdb {
+  max-height: 320px;
+  overflow-y: auto;
+  background: #171717;
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+  padding: 6px;
+  margin-bottom: 8px;
+}
+
+.cytube-tools-poll-history-analyzer-winner-entry {
+  border-bottom: 1px solid #2d2d2d;
+  padding: 4px 0;
+}
+
+.cytube-tools-poll-history-analyzer-winner-entry:last-child {
+  border-bottom: none;
+}
+
+.cytube-tools-poll-history-analyzer-winner-summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #edf0f3;
+  outline: none;
+  user-select: none;
+}
+
+.cytube-tools-poll-history-analyzer-winner-controls {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(220px, 1.4fr) auto auto;
+  gap: 6px;
+  margin: 6px 0;
+  align-items: center;
+}
+
+.cytube-tools-poll-history-analyzer-winner-variants {
+  font-size: 11px;
+  color: #a7afba;
+  margin-bottom: 6px;
+  word-break: break-word;
+}
+
+.cytube-tools-poll-history-analyzer-winner-polls {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.cytube-tools-poll-history-analyzer-winner-poll-row {
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+  background: #111;
+  padding: 5px;
+  font-size: 11px;
+}
+
+.cytube-tools-poll-history-analyzer-winner-poll-meta {
+  color: #98a0aa;
+  margin-bottom: 2px;
+}
+
+.cytube-tools-poll-history-analyzer-winner-poll-title {
+  color: #dce2e8;
+  font-weight: 600;
+  margin-bottom: 2px;
+  word-break: break-word;
+}
+
+.cytube-tools-poll-history-analyzer-winner-poll-options {
+  color: #b5bcc4;
+  word-break: break-word;
+}
+
+.cytube-tools-poll-history-analyzer-list {
+  max-height: 340px;
+  overflow-y: auto;
+  background: #171717;
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.cytube-tools-poll-history-analyzer-row {
+  border-bottom: 1px solid #2d2d2d;
+  padding: 5px 0;
+  font-size: 12px;
+}
+
+.cytube-tools-poll-history-analyzer-row:last-child {
+  border-bottom: none;
+}
+
+.cytube-tools-poll-history-analyzer-row-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cytube-tools-poll-history-analyzer-time {
+  color: #9aa0a6;
+  min-width: 72px;
+}
+
+.cytube-tools-poll-history-analyzer-badge {
+  font-size: 10px;
+  border-radius: 10px;
+  padding: 1px 6px;
+  color: #111;
+  font-weight: 700;
+}
+
+.badge-official {
+  background: #58c475;
+}
+
+.badge-soft {
+  background: #ffd166;
+}
+
+.badge-none {
+  background: #8a8a8a;
+  color: #111;
+}
+
+.cytube-tools-poll-history-analyzer-title {
+  color: #edf0f3;
+  font-weight: 600;
+}
+
+.cytube-tools-poll-history-analyzer-winner {
+  margin-top: 2px;
+  color: #d4d8df;
+}
+
+.cytube-tools-poll-history-analyzer-options {
+  margin-top: 2px;
+  color: #b5bcc4;
+  word-break: break-word;
+}
+
+.cytube-tools-poll-history-analyzer-empty {
+  color: #8a8a8a;
+  font-style: italic;
+}
+
+@media (max-width: 900px) {
+  .cytube-tools-poll-history-analyzer-winner-controls {
+    grid-template-columns: 1fr;
+  }
+}

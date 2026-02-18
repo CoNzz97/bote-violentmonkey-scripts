@@ -1,0 +1,1281 @@
+{
+  "exportedAt": "2026-02-18T13:32:21.662Z",
+  "settings": {
+    "enabled": true,
+    "search": "",
+    "winnerFilter": "all",
+    "viewMode": "grouped",
+    "softWinnerDelaySec": 120,
+    "aliasRulesText": "Tokino Sora: sora\nRoboco-san: roboco, robo\nAZKi: azki, azu\nSakura Miko: miko, migo\nHoshimachi Suisei: suisei, sui\nAki Rosenthal: aki\nAkai Haato: haato, haachama, haato, chama\nShirakami Fubuki: fubuki, fub, FBK\nNatsuiro Matsuri: matsuri, festival\nNakiri Ayame: ayame, ojou\nYuzuki Choco: choco\nOozora Subaru: subaru, suba, shuba\nOokami Mio: mio\nNekomata Okayu: okayu, oka\nInugami Korone: korone, koro\nUsada Pekora: pekora, peko\nShiranui Flare: flare, fu-tan\nShirogane Noel: noel, danchou\nHoushou Marine: marine, senchou\nTsunomaki Watame: watame, wata\nTokoyami Towa: towa, towapi\nHimemori Luna: luna\nYukihana Lamy: lamy, wamy\nMomosuzu Nene: nene, nenechi\nShishiro Botan: botan, shishiron\nOmaru Polka: polka, pol\nLa+ Darknesss: la+, la, lap\nTakane Lui: lui\nHakui Koyori: koyori, koyo\nKazama Iroha: iroha\nOtonose Kanade: kanade\nIchijou Ririka: ririka, riri\nJuufuutei Raden: raden\nTodoroki Hajime: hajime\nIsaki Riona: riona\nKoganei Niko: niko\nMizumiya Su: su, suu\nRindo Chihaya: chihaya\nKikirara Vivi: vivi\nAyunda Risu: risu\nMoona Hoshinova: moona\nAirani Iofifteen: iofi, iofifteen\nKureiji Ollie: ollie, olli\nAnya Melfissa: anya\nPavolia Reine: reine, birb\nVestia Zeta: zeta\nKaela Kovalskia: kaela\nKobo Kanaeru: kobo\nMori Calliope: calli, mori\nTakanashi Kiara: kiara, wawa\nNinomae Ina'nis: ina\nIRyS: irys\nOuro Kronii: kronii\nHakos Baelz: baelz, bae\nShiori Novella: shiori\nKoseki Bijou: bijou, biboo\nNerissa Ravencroft: nerissa, rissa\nFuwamoco: fuwawa, fuwa, mococo, moco, fuwamoco\nElizabeth Rose Bloodflame: elizabeth, liz, erb\nGigi Murin: gigi, gg\nCecilia Immergreen: cecilia, cc\nRaora Panthera: raora\nPlaylist: playlisto, playlist"
+  },
+  "records": [
+    {
+      "id": "h1068699789-1771419990652",
+      "hash": "h1068699789",
+      "source": "active-soft",
+      "createdAt": 1771419990652,
+      "title": "×End Poll13:04:29 0Iroha Hologuard0Peko Mario Tennis0Towa Apex (Twitch)0Roboco Apex0ShubaOkayu Mario Tennis4Mori MyVoiceZoo2Koro Cast n Chill1Azki Geoguessr0Viv",
+      "options": [
+        {
+          "rawLabel": "Iroha Hologuard",
+          "votes": 0,
+          "canonicalKey": "iroha hologuard",
+          "entity": "Kazama Iroha",
+          "groupKey": "kazama iroha",
+          "tags": []
+        },
+        {
+          "rawLabel": "Peko Mario Tennis",
+          "votes": 0,
+          "canonicalKey": "peko mario tennis",
+          "entity": "Usada Pekora",
+          "groupKey": "usada pekora",
+          "tags": []
+        },
+        {
+          "rawLabel": "Towa Apex (Twitch)",
+          "votes": 0,
+          "canonicalKey": "towa apex twitch",
+          "entity": "Tokoyami Towa",
+          "groupKey": "tokoyami towa",
+          "tags": []
+        },
+        {
+          "rawLabel": "Roboco Apex",
+          "votes": 0,
+          "canonicalKey": "roboco apex",
+          "entity": "Roboco-san",
+          "groupKey": "roboco san",
+          "tags": []
+        },
+        {
+          "rawLabel": "ShubaOkayu Mario Tennis",
+          "votes": 0,
+          "canonicalKey": "shubaokayu mario tennis",
+          "entity": null,
+          "groupKey": "shubaokayu mario tennis",
+          "tags": []
+        },
+        {
+          "rawLabel": "Mori MyVoiceZoo",
+          "votes": 4,
+          "canonicalKey": "mori myvoicezoo",
+          "entity": "Mori Calliope",
+          "groupKey": "mori calliope",
+          "tags": []
+        },
+        {
+          "rawLabel": "Koro Cast n Chill",
+          "votes": 2,
+          "canonicalKey": "koro cast n chill",
+          "entity": "Inugami Korone",
+          "groupKey": "inugami korone",
+          "tags": []
+        },
+        {
+          "rawLabel": "Azki Geoguessr",
+          "votes": 1,
+          "canonicalKey": "azki geoguessr",
+          "entity": "AZKi",
+          "groupKey": "azki",
+          "tags": []
+        },
+        {
+          "rawLabel": "Vivi RE2",
+          "votes": 0,
+          "canonicalKey": "vivi re2",
+          "entity": "Kikirara Vivi",
+          "groupKey": "kikirara vivi",
+          "tags": []
+        }
+      ],
+      "winnerMode": "soft",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": "Mori MyVoiceZoo",
+      "winnerSoftGroup": "mori calliope",
+      "softTie": false,
+      "rawSnippet": "×End Poll13:04:29 0Iroha Hologuard0Peko Mario Tennis0Towa Apex (Twitch)0Roboco Apex0ShubaOkayu Mario Tennis4Mori MyVoiceZoo2Koro Cast n Chill1Azki Geoguessr0Vivi RE2"
+    },
+    {
+      "id": "h275991701-1771419870620",
+      "hash": "h275991701",
+      "source": "history",
+      "createdAt": 1771419870620,
+      "title": "Choices",
+      "options": [
+        {
+          "rawLabel": "Aruran GTA",
+          "votes": 0,
+          "canonicalKey": "aruran gta",
+          "entity": null,
+          "groupKey": "aruran gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Fuma GTA",
+          "votes": 0,
+          "canonicalKey": "fuma gta",
+          "entity": null,
+          "groupKey": "fuma gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Axel GTA",
+          "votes": 0,
+          "canonicalKey": "axel gta",
+          "entity": null,
+          "groupKey": "axel gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "PolkaLuna Portal 2",
+          "votes": 0,
+          "canonicalKey": "polkaluna portal 2",
+          "entity": null,
+          "groupKey": "polkaluna portal 2",
+          "tags": []
+        },
+        {
+          "rawLabel": "Iroha Hologuard",
+          "votes": 0,
+          "canonicalKey": "iroha hologuard",
+          "entity": "Kazama Iroha",
+          "groupKey": "kazama iroha",
+          "tags": []
+        },
+        {
+          "rawLabel": "Fuwawa Hitman",
+          "votes": 1,
+          "canonicalKey": "fuwawa hitman",
+          "entity": "Fuwamoco",
+          "groupKey": "fuwamoco",
+          "tags": []
+        },
+        {
+          "rawLabel": "Peko Mario Tennis",
+          "votes": 0,
+          "canonicalKey": "peko mario tennis",
+          "entity": "Usada Pekora",
+          "groupKey": "usada pekora",
+          "tags": []
+        },
+        {
+          "rawLabel": "REGLOSS vs FLOWGLOW 3D",
+          "votes": 3,
+          "canonicalKey": "regloss vs flowglow 3d",
+          "entity": null,
+          "groupKey": "regloss vs flowglow 3d",
+          "tags": []
+        }
+      ],
+      "winnerMode": "none",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": null,
+      "winnerSoftGroup": null,
+      "softTie": false,
+      "rawSnippet": "×10:59:52 Choices0Aruran GTA0Fuma GTA0Axel GTA0PolkaLuna Portal 20Iroha Hologuard1Fuwawa Hitman0Peko Mario Tennis3REGLOSS vs FLOWGLOW 3D"
+    },
+    {
+      "id": "h1198728180-1771416706178",
+      "hash": "h1198728180",
+      "source": "active-soft",
+      "createdAt": 1771416706178,
+      "title": "Choices",
+      "options": [
+        {
+          "rawLabel": "Aruran GTA",
+          "votes": 0,
+          "canonicalKey": "aruran gta",
+          "entity": null,
+          "groupKey": "aruran gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Fuma GTA",
+          "votes": 0,
+          "canonicalKey": "fuma gta",
+          "entity": null,
+          "groupKey": "fuma gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Axel GTA",
+          "votes": 0,
+          "canonicalKey": "axel gta",
+          "entity": null,
+          "groupKey": "axel gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "PolkaLuna Portal 2",
+          "votes": 0,
+          "canonicalKey": "polkaluna portal 2",
+          "entity": null,
+          "groupKey": "polkaluna portal 2",
+          "tags": []
+        },
+        {
+          "rawLabel": "Iroha Hologuard",
+          "votes": 0,
+          "canonicalKey": "iroha hologuard",
+          "entity": "Kazama Iroha",
+          "groupKey": "kazama iroha",
+          "tags": []
+        },
+        {
+          "rawLabel": "Fuwawa Hitman",
+          "votes": 3,
+          "canonicalKey": "fuwawa hitman",
+          "entity": "Fuwamoco",
+          "groupKey": "fuwamoco",
+          "tags": []
+        },
+        {
+          "rawLabel": "Peko Mario Tennis",
+          "votes": 0,
+          "canonicalKey": "peko mario tennis",
+          "entity": "Usada Pekora",
+          "groupKey": "usada pekora",
+          "tags": []
+        },
+        {
+          "rawLabel": "REGLOSS vs FLOWGLOW 3D",
+          "votes": 4,
+          "canonicalKey": "regloss vs flowglow 3d",
+          "entity": null,
+          "groupKey": "regloss vs flowglow 3d",
+          "tags": []
+        }
+      ],
+      "winnerMode": "soft",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": "REGLOSS vs FLOWGLOW 3D",
+      "winnerSoftGroup": "regloss vs flowglow 3d",
+      "softTie": false,
+      "rawSnippet": "×End Poll10:59:52 Choices0Aruran GTA0Fuma GTA0Axel GTA0PolkaLuna Portal 20Iroha Hologuard3Fuwawa Hitman0Peko Mario Tennis4REGLOSS vs FLOWGLOW 3D"
+    },
+    {
+      "id": "h1227057994-1771412512775",
+      "hash": "h1227057994",
+      "source": "active-soft",
+      "createdAt": 1771412512775,
+      "title": "Choices",
+      "options": [
+        {
+          "rawLabel": "Aruran GTA",
+          "votes": 0,
+          "canonicalKey": "aruran gta",
+          "entity": null,
+          "groupKey": "aruran gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Fuma GTA",
+          "votes": 0,
+          "canonicalKey": "fuma gta",
+          "entity": null,
+          "groupKey": "fuma gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Axel GTA",
+          "votes": 0,
+          "canonicalKey": "axel gta",
+          "entity": null,
+          "groupKey": "axel gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "PolkaLuna Portal 2",
+          "votes": 0,
+          "canonicalKey": "polkaluna portal 2",
+          "entity": null,
+          "groupKey": "polkaluna portal 2",
+          "tags": []
+        },
+        {
+          "rawLabel": "Iroha Hologuard",
+          "votes": 0,
+          "canonicalKey": "iroha hologuard",
+          "entity": "Kazama Iroha",
+          "groupKey": "kazama iroha",
+          "tags": []
+        },
+        {
+          "rawLabel": "Fuwawa Hitman",
+          "votes": 3,
+          "canonicalKey": "fuwawa hitman",
+          "entity": "Fuwamoco",
+          "groupKey": "fuwamoco",
+          "tags": []
+        },
+        {
+          "rawLabel": "Peko Mario Tennis",
+          "votes": 0,
+          "canonicalKey": "peko mario tennis",
+          "entity": "Usada Pekora",
+          "groupKey": "usada pekora",
+          "tags": []
+        },
+        {
+          "rawLabel": "REGLOSS vs FLOWGLOW 3D",
+          "votes": 6,
+          "canonicalKey": "regloss vs flowglow 3d",
+          "entity": null,
+          "groupKey": "regloss vs flowglow 3d",
+          "tags": []
+        }
+      ],
+      "winnerMode": "soft",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": "REGLOSS vs FLOWGLOW 3D",
+      "winnerSoftGroup": "regloss vs flowglow 3d",
+      "softTie": false,
+      "rawSnippet": "×End Poll10:59:52 Choices0Aruran GTA0Fuma GTA0Axel GTA0PolkaLuna Portal 20Iroha Hologuard3Fuwawa Hitman0Peko Mario Tennis6REGLOSS vs FLOWGLOW 3D"
+    },
+    {
+      "id": "h1269011829-1771412392736",
+      "hash": "h1269011829",
+      "source": "history",
+      "createdAt": 1771412392736,
+      "title": "Is pteranodon a dinosaur?",
+      "options": [
+        {
+          "rawLabel": "2 Yes",
+          "votes": 0,
+          "canonicalKey": "2 yes",
+          "entity": null,
+          "groupKey": "2 yes",
+          "tags": []
+        },
+        {
+          "rawLabel": "1 No",
+          "votes": 0,
+          "canonicalKey": "1 no",
+          "entity": null,
+          "groupKey": "1 no",
+          "tags": []
+        },
+        {
+          "rawLabel": "6 I dropped out of school before dinosaur class :gargoogaga:",
+          "votes": 0,
+          "canonicalKey": "6 i dropped out of school before dinosaur class gargoogaga",
+          "entity": null,
+          "groupKey": "6 i dropped out of school before dinosaur class gargoogaga",
+          "tags": []
+        }
+      ],
+      "winnerMode": "none",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": null,
+      "winnerSoftGroup": null,
+      "softTie": false,
+      "rawSnippet": "×10:36:41 Is pteranodon a dinosaur?2 Yes1 No6 I dropped out of school before dinosaur class :gargoogaga:"
+    },
+    {
+      "id": "h678266590-1771411002153",
+      "hash": "h678266590",
+      "source": "history",
+      "createdAt": 1771411002153,
+      "title": "Whats your favorite dino?",
+      "options": [
+        {
+          "rawLabel": "1 Tyrannosaurus rex",
+          "votes": 0,
+          "canonicalKey": "1 tyrannosaurus rex",
+          "entity": null,
+          "groupKey": "1 tyrannosaurus rex",
+          "tags": []
+        },
+        {
+          "rawLabel": "4 Velociraptor",
+          "votes": 0,
+          "canonicalKey": "4 velociraptor",
+          "entity": null,
+          "groupKey": "4 velociraptor",
+          "tags": []
+        },
+        {
+          "rawLabel": "1 Triceratops",
+          "votes": 0,
+          "canonicalKey": "1 triceratops",
+          "entity": null,
+          "groupKey": "1 triceratops",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 Stegosaurus",
+          "votes": 0,
+          "canonicalKey": "0 stegosaurus",
+          "entity": null,
+          "groupKey": "0 stegosaurus",
+          "tags": []
+        },
+        {
+          "rawLabel": "1 Brachiosaurus",
+          "votes": 0,
+          "canonicalKey": "1 brachiosaurus",
+          "entity": null,
+          "groupKey": "1 brachiosaurus",
+          "tags": []
+        },
+        {
+          "rawLabel": "1 Ankylosaurus",
+          "votes": 0,
+          "canonicalKey": "1 ankylosaurus",
+          "entity": null,
+          "groupKey": "1 ankylosaurus",
+          "tags": []
+        },
+        {
+          "rawLabel": "1 Spinosaurus",
+          "votes": 0,
+          "canonicalKey": "1 spinosaurus",
+          "entity": null,
+          "groupKey": "1 spinosaurus",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 Allosaurus",
+          "votes": 0,
+          "canonicalKey": "0 allosaurus",
+          "entity": null,
+          "groupKey": "0 allosaurus",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 Diplodocus",
+          "votes": 0,
+          "canonicalKey": "0 diplodocus",
+          "entity": null,
+          "groupKey": "0 diplodocus",
+          "tags": []
+        },
+        {
+          "rawLabel": "1 Pteranodon",
+          "votes": 0,
+          "canonicalKey": "1 pteranodon",
+          "entity": null,
+          "groupKey": "1 pteranodon",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 Parasaurolophus",
+          "votes": 0,
+          "canonicalKey": "0 parasaurolophus",
+          "entity": null,
+          "groupKey": "0 parasaurolophus",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 Dilophosaurus",
+          "votes": 0,
+          "canonicalKey": "0 dilophosaurus",
+          "entity": null,
+          "groupKey": "0 dilophosaurus",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 Carnotaurus",
+          "votes": 0,
+          "canonicalKey": "0 carnotaurus",
+          "entity": null,
+          "groupKey": "0 carnotaurus",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 Apatosaurus",
+          "votes": 0,
+          "canonicalKey": "0 apatosaurus",
+          "entity": null,
+          "groupKey": "0 apatosaurus",
+          "tags": []
+        },
+        {
+          "rawLabel": "2 Iguanodon",
+          "votes": 0,
+          "canonicalKey": "2 iguanodon",
+          "entity": null,
+          "groupKey": "2 iguanodon",
+          "tags": []
+        }
+      ],
+      "winnerMode": "none",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": null,
+      "winnerSoftGroup": null,
+      "softTie": false,
+      "rawSnippet": "×09:04:15 Whats your favorite dino?1 Tyrannosaurus rex4 Velociraptor1 Triceratops0 Stegosaurus1 Brachiosaurus1 Ankylosaurus1 Spinosaurus0 Allosaurus0 Diplodocus1 Pteranodon0 Parasaurolophus0 Dilophosaurus0 Carnotaurus0 Apatosaurus2 Iguanodon"
+    },
+    {
+      "id": "h340517658-1771405455987",
+      "hash": "h340517658",
+      "source": "history",
+      "createdAt": 1771405455987,
+      "title": "×09:00:43 0Towa SF60Nene Hologuard0Aruran GTA5Bae Dinosaurs0Fuma GTA",
+      "options": [
+        {
+          "rawLabel": "Towa SF6",
+          "votes": 0,
+          "canonicalKey": "towa sf6",
+          "entity": "Tokoyami Towa",
+          "groupKey": "tokoyami towa",
+          "tags": [
+            "sf6"
+          ]
+        },
+        {
+          "rawLabel": "Nene Hologuard",
+          "votes": 0,
+          "canonicalKey": "nene hologuard",
+          "entity": "Momosuzu Nene",
+          "groupKey": "momosuzu nene",
+          "tags": []
+        },
+        {
+          "rawLabel": "Aruran GTA",
+          "votes": 0,
+          "canonicalKey": "aruran gta",
+          "entity": null,
+          "groupKey": "aruran gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Bae Dinosaurs",
+          "votes": 5,
+          "canonicalKey": "bae dinosaurs",
+          "entity": "Hakos Baelz",
+          "groupKey": "hakos baelz",
+          "tags": []
+        },
+        {
+          "rawLabel": "Fuma GTA",
+          "votes": 0,
+          "canonicalKey": "fuma gta",
+          "entity": null,
+          "groupKey": "fuma gta",
+          "tags": []
+        }
+      ],
+      "winnerMode": "none",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": null,
+      "winnerSoftGroup": null,
+      "softTie": false,
+      "rawSnippet": "×09:00:43 0Towa SF60Nene Hologuard0Aruran GTA5Bae Dinosaurs0Fuma GTA"
+    },
+    {
+      "id": "h817803473-1771405364023",
+      "hash": "h817803473",
+      "source": "active-soft",
+      "createdAt": 1771405364023,
+      "title": "×End Poll09:00:43 0Towa SF60Nene Hologuard0Aruran GTA5Bae Dinosaurs0Fuma GTA",
+      "options": [
+        {
+          "rawLabel": "Towa SF6",
+          "votes": 0,
+          "canonicalKey": "towa sf6",
+          "entity": "Tokoyami Towa",
+          "groupKey": "tokoyami towa",
+          "tags": [
+            "sf6"
+          ]
+        },
+        {
+          "rawLabel": "Nene Hologuard",
+          "votes": 0,
+          "canonicalKey": "nene hologuard",
+          "entity": "Momosuzu Nene",
+          "groupKey": "momosuzu nene",
+          "tags": []
+        },
+        {
+          "rawLabel": "Aruran GTA",
+          "votes": 0,
+          "canonicalKey": "aruran gta",
+          "entity": null,
+          "groupKey": "aruran gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Bae Dinosaurs",
+          "votes": 5,
+          "canonicalKey": "bae dinosaurs",
+          "entity": "Hakos Baelz",
+          "groupKey": "hakos baelz",
+          "tags": []
+        },
+        {
+          "rawLabel": "Fuma GTA",
+          "votes": 0,
+          "canonicalKey": "fuma gta",
+          "entity": null,
+          "groupKey": "fuma gta",
+          "tags": []
+        }
+      ],
+      "winnerMode": "soft",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": "Bae Dinosaurs",
+      "winnerSoftGroup": "hakos baelz",
+      "softTie": false,
+      "rawSnippet": "×End Poll09:00:43 0Towa SF60Nene Hologuard0Aruran GTA5Bae Dinosaurs0Fuma GTA"
+    },
+    {
+      "id": "h1906004128-1771404073020",
+      "hash": "h1906004128",
+      "source": "history",
+      "createdAt": 1771404073020,
+      "title": "×01:01:54 w2 charity continued0 flare 2pointmuseum0 goldbullet g string (what?)0 altare mewgenics0 hakka chat0 shinri scene investigators",
+      "options": [
+        {
+          "rawLabel": "2 charity continued",
+          "votes": 0,
+          "canonicalKey": "2 charity continued",
+          "entity": null,
+          "groupKey": "2 charity continued",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 flare 2pointmuseum",
+          "votes": 0,
+          "canonicalKey": "0 flare 2pointmuseum",
+          "entity": "Shiranui Flare",
+          "groupKey": "shiranui flare",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 goldbullet g string (what?)",
+          "votes": 0,
+          "canonicalKey": "0 goldbullet g string what",
+          "entity": null,
+          "groupKey": "0 goldbullet g string what",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 altare mewgenics",
+          "votes": 0,
+          "canonicalKey": "0 altare mewgenics",
+          "entity": null,
+          "groupKey": "0 altare mewgenics",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 hakka chat",
+          "votes": 0,
+          "canonicalKey": "0 hakka chat",
+          "entity": null,
+          "groupKey": "0 hakka chat",
+          "tags": []
+        },
+        {
+          "rawLabel": "0 shinri scene investigators",
+          "votes": 0,
+          "canonicalKey": "0 shinri scene investigators",
+          "entity": null,
+          "groupKey": "0 shinri scene investigators",
+          "tags": []
+        }
+      ],
+      "winnerMode": "none",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": null,
+      "winnerSoftGroup": null,
+      "softTie": false,
+      "rawSnippet": "×01:01:54 w2 charity continued0 flare 2pointmuseum0 goldbullet g string (what?)0 altare mewgenics0 hakka chat0 shinri scene investigators"
+    },
+    {
+      "id": "h1596659626-1771351478297",
+      "hash": "h1596659626",
+      "source": "active-soft",
+      "createdAt": 1771351478297,
+      "title": "×15:04:45 0fuma gta0aruran gta0axel gta0luna minecraft0miyabi umigari0okayu pokemon emerald0shuba super mario world3polka hologuard0peko mario tennis0iofi draw0",
+      "options": [
+        {
+          "rawLabel": "fuma gta",
+          "votes": 0,
+          "canonicalKey": "fuma gta",
+          "entity": null,
+          "groupKey": "fuma gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "aruran gta",
+          "votes": 0,
+          "canonicalKey": "aruran gta",
+          "entity": null,
+          "groupKey": "aruran gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "axel gta",
+          "votes": 0,
+          "canonicalKey": "axel gta",
+          "entity": null,
+          "groupKey": "axel gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "luna minecraft",
+          "votes": 0,
+          "canonicalKey": "luna minecraft",
+          "entity": "Himemori Luna",
+          "groupKey": "himemori luna",
+          "tags": []
+        },
+        {
+          "rawLabel": "miyabi umigari",
+          "votes": 0,
+          "canonicalKey": "miyabi umigari",
+          "entity": null,
+          "groupKey": "miyabi umigari",
+          "tags": []
+        },
+        {
+          "rawLabel": "okayu pokemon emerald",
+          "votes": 0,
+          "canonicalKey": "okayu pokemon emerald",
+          "entity": "Nekomata Okayu",
+          "groupKey": "nekomata okayu",
+          "tags": []
+        },
+        {
+          "rawLabel": "shuba super mario world",
+          "votes": 0,
+          "canonicalKey": "shuba super mario world",
+          "entity": "Oozora Subaru",
+          "groupKey": "oozora subaru",
+          "tags": []
+        },
+        {
+          "rawLabel": "polka hologuard",
+          "votes": 3,
+          "canonicalKey": "polka hologuard",
+          "entity": "Omaru Polka",
+          "groupKey": "omaru polka",
+          "tags": []
+        },
+        {
+          "rawLabel": "peko mario tennis",
+          "votes": 0,
+          "canonicalKey": "peko mario tennis",
+          "entity": "Usada Pekora",
+          "groupKey": "usada pekora",
+          "tags": []
+        },
+        {
+          "rawLabel": "iofi draw",
+          "votes": 0,
+          "canonicalKey": "iofi draw",
+          "entity": "Airani Iofifteen",
+          "groupKey": "airani iofifteen",
+          "tags": []
+        },
+        {
+          "rawLabel": "su ffx",
+          "votes": 0,
+          "canonicalKey": "su ffx",
+          "entity": "Mizumiya Su",
+          "groupKey": "mizumiya su",
+          "tags": []
+        },
+        {
+          "rawLabel": "kobo chinese new year handcam",
+          "votes": 0,
+          "canonicalKey": "kobo chinese new year handcam",
+          "entity": "Kobo Kanaeru",
+          "groupKey": "kobo kanaeru",
+          "tags": []
+        },
+        {
+          "rawLabel": "roboco zatsu",
+          "votes": 0,
+          "canonicalKey": "roboco zatsu",
+          "entity": "Roboco-san",
+          "groupKey": "roboco san",
+          "tags": [
+            "zatsu"
+          ]
+        },
+        {
+          "rawLabel": "riona bits and bops",
+          "votes": 0,
+          "canonicalKey": "riona bits and bops",
+          "entity": "Isaki Riona",
+          "groupKey": "isaki riona",
+          "tags": []
+        },
+        {
+          "rawLabel": "mori karaoke reruns for charity",
+          "votes": 4,
+          "canonicalKey": "mori karaoke reruns for charity",
+          "entity": "Mori Calliope",
+          "groupKey": "mori calliope",
+          "tags": [
+            "karaoke"
+          ]
+        }
+      ],
+      "winnerMode": "soft",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": "mori karaoke reruns for charity",
+      "winnerSoftGroup": "mori calliope",
+      "softTie": false,
+      "rawSnippet": "×15:04:45 0fuma gta0aruran gta0axel gta0luna minecraft0miyabi umigari0okayu pokemon emerald0shuba super mario world3polka hologuard0peko mario tennis0iofi draw0su ffx0kobo chinese new year handcam0roboco zatsu0riona bits and bops4mori karaoke reruns for charity"
+    },
+    {
+      "id": "h2133273452-1771340806254",
+      "hash": "h2133273452",
+      "source": "active-soft",
+      "createdAt": 1771340806254,
+      "title": "×End Poll15:04:45 0fuma gta0aruran gta0axel gta0luna minecraft0miyabi umigari0okayu pokemon emerald0shuba super mario world3polka hologuard1peko mario tennis0io",
+      "options": [
+        {
+          "rawLabel": "fuma gta",
+          "votes": 0,
+          "canonicalKey": "fuma gta",
+          "entity": null,
+          "groupKey": "fuma gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "aruran gta",
+          "votes": 0,
+          "canonicalKey": "aruran gta",
+          "entity": null,
+          "groupKey": "aruran gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "axel gta",
+          "votes": 0,
+          "canonicalKey": "axel gta",
+          "entity": null,
+          "groupKey": "axel gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "luna minecraft",
+          "votes": 0,
+          "canonicalKey": "luna minecraft",
+          "entity": "Himemori Luna",
+          "groupKey": "himemori luna",
+          "tags": []
+        },
+        {
+          "rawLabel": "miyabi umigari",
+          "votes": 0,
+          "canonicalKey": "miyabi umigari",
+          "entity": null,
+          "groupKey": "miyabi umigari",
+          "tags": []
+        },
+        {
+          "rawLabel": "okayu pokemon emerald",
+          "votes": 0,
+          "canonicalKey": "okayu pokemon emerald",
+          "entity": "Nekomata Okayu",
+          "groupKey": "nekomata okayu",
+          "tags": []
+        },
+        {
+          "rawLabel": "shuba super mario world",
+          "votes": 0,
+          "canonicalKey": "shuba super mario world",
+          "entity": "Oozora Subaru",
+          "groupKey": "oozora subaru",
+          "tags": []
+        },
+        {
+          "rawLabel": "polka hologuard",
+          "votes": 3,
+          "canonicalKey": "polka hologuard",
+          "entity": "Omaru Polka",
+          "groupKey": "omaru polka",
+          "tags": []
+        },
+        {
+          "rawLabel": "peko mario tennis",
+          "votes": 1,
+          "canonicalKey": "peko mario tennis",
+          "entity": "Usada Pekora",
+          "groupKey": "usada pekora",
+          "tags": []
+        },
+        {
+          "rawLabel": "iofi draw",
+          "votes": 0,
+          "canonicalKey": "iofi draw",
+          "entity": "Airani Iofifteen",
+          "groupKey": "airani iofifteen",
+          "tags": []
+        },
+        {
+          "rawLabel": "su ffx",
+          "votes": 0,
+          "canonicalKey": "su ffx",
+          "entity": "Mizumiya Su",
+          "groupKey": "mizumiya su",
+          "tags": []
+        },
+        {
+          "rawLabel": "kobo chinese new year handcam",
+          "votes": 1,
+          "canonicalKey": "kobo chinese new year handcam",
+          "entity": "Kobo Kanaeru",
+          "groupKey": "kobo kanaeru",
+          "tags": []
+        },
+        {
+          "rawLabel": "roboco zatsu",
+          "votes": 0,
+          "canonicalKey": "roboco zatsu",
+          "entity": "Roboco-san",
+          "groupKey": "roboco san",
+          "tags": [
+            "zatsu"
+          ]
+        },
+        {
+          "rawLabel": "riona bits and bops",
+          "votes": 0,
+          "canonicalKey": "riona bits and bops",
+          "entity": "Isaki Riona",
+          "groupKey": "isaki riona",
+          "tags": []
+        },
+        {
+          "rawLabel": "mori karaoke reruns for charity",
+          "votes": 4,
+          "canonicalKey": "mori karaoke reruns for charity",
+          "entity": "Mori Calliope",
+          "groupKey": "mori calliope",
+          "tags": [
+            "karaoke"
+          ]
+        }
+      ],
+      "winnerMode": "soft",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": "mori karaoke reruns for charity",
+      "winnerSoftGroup": "mori calliope",
+      "softTie": false,
+      "rawSnippet": "×End Poll15:04:45 0fuma gta0aruran gta0axel gta0luna minecraft0miyabi umigari0okayu pokemon emerald0shuba super mario world3polka hologuard1peko mario tennis0iofi draw0su ffx1kobo chinese new year handcam0roboco zatsu0riona bits and bops4mori karaoke reruns for charity"
+    },
+    {
+      "id": "h2085831597-1771340686214",
+      "hash": "h2085831597",
+      "source": "history",
+      "createdAt": 1771340686214,
+      "title": "×13:00:12 0Fuma GTA0Aruran GTA0Axel GTA0Luna Minecraft0Zeta Fortnite0Miyabi UMIGARI0Uyu Minecraft0Ririka And Roger0Rikka Minecraft0Okayu Pokemon Emerald0Shuba S",
+      "options": [
+        {
+          "rawLabel": "Fuma GTA",
+          "votes": 0,
+          "canonicalKey": "fuma gta",
+          "entity": null,
+          "groupKey": "fuma gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Aruran GTA",
+          "votes": 0,
+          "canonicalKey": "aruran gta",
+          "entity": null,
+          "groupKey": "aruran gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Axel GTA",
+          "votes": 0,
+          "canonicalKey": "axel gta",
+          "entity": null,
+          "groupKey": "axel gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Luna Minecraft",
+          "votes": 0,
+          "canonicalKey": "luna minecraft",
+          "entity": "Himemori Luna",
+          "groupKey": "himemori luna",
+          "tags": []
+        },
+        {
+          "rawLabel": "Zeta Fortnite",
+          "votes": 0,
+          "canonicalKey": "zeta fortnite",
+          "entity": "Vestia Zeta",
+          "groupKey": "vestia zeta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Miyabi UMIGARI",
+          "votes": 0,
+          "canonicalKey": "miyabi umigari",
+          "entity": null,
+          "groupKey": "miyabi umigari",
+          "tags": []
+        },
+        {
+          "rawLabel": "Uyu Minecraft",
+          "votes": 0,
+          "canonicalKey": "uyu minecraft",
+          "entity": null,
+          "groupKey": "uyu minecraft",
+          "tags": []
+        },
+        {
+          "rawLabel": "Ririka And Roger",
+          "votes": 0,
+          "canonicalKey": "ririka and roger",
+          "entity": "Ichijou Ririka",
+          "groupKey": "ichijou ririka",
+          "tags": []
+        },
+        {
+          "rawLabel": "Rikka Minecraft",
+          "votes": 0,
+          "canonicalKey": "rikka minecraft",
+          "entity": null,
+          "groupKey": "rikka minecraft",
+          "tags": []
+        },
+        {
+          "rawLabel": "Okayu Pokemon Emerald",
+          "votes": 0,
+          "canonicalKey": "okayu pokemon emerald",
+          "entity": "Nekomata Okayu",
+          "groupKey": "nekomata okayu",
+          "tags": []
+        },
+        {
+          "rawLabel": "Shuba Super Mario World",
+          "votes": 0,
+          "canonicalKey": "shuba super mario world",
+          "entity": "Oozora Subaru",
+          "groupKey": "oozora subaru",
+          "tags": []
+        },
+        {
+          "rawLabel": "Chihaya And Roger",
+          "votes": 0,
+          "canonicalKey": "chihaya and roger",
+          "entity": "Rindo Chihaya",
+          "groupKey": "rindo chihaya",
+          "tags": []
+        },
+        {
+          "rawLabel": "Polka Hologuard",
+          "votes": 0,
+          "canonicalKey": "polka hologuard",
+          "entity": "Omaru Polka",
+          "groupKey": "omaru polka",
+          "tags": []
+        },
+        {
+          "rawLabel": "Iofi Drawing",
+          "votes": 0,
+          "canonicalKey": "iofi drawing",
+          "entity": "Airani Iofifteen",
+          "groupKey": "airani iofifteen",
+          "tags": []
+        },
+        {
+          "rawLabel": "Peko Mario Sports",
+          "votes": 1,
+          "canonicalKey": "peko mario sports",
+          "entity": "Usada Pekora",
+          "groupKey": "usada pekora",
+          "tags": []
+        },
+        {
+          "rawLabel": "Shien And Roger",
+          "votes": 0,
+          "canonicalKey": "shien and roger",
+          "entity": null,
+          "groupKey": "shien and roger",
+          "tags": []
+        },
+        {
+          "rawLabel": "Bae I Don't Fall",
+          "votes": 4,
+          "canonicalKey": "bae i don t fall",
+          "entity": "Hakos Baelz",
+          "groupKey": "hakos baelz",
+          "tags": []
+        }
+      ],
+      "winnerMode": "none",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": null,
+      "winnerSoftGroup": null,
+      "softTie": false,
+      "rawSnippet": "×13:00:12 0Fuma GTA0Aruran GTA0Axel GTA0Luna Minecraft0Zeta Fortnite0Miyabi UMIGARI0Uyu Minecraft0Ririka And Roger0Rikka Minecraft0Okayu Pokemon Emerald0Shuba Super Mario World0Chihaya And Roger0Polka Hologuard0Iofi Drawing1Peko Mario Sports0Shien And Roger4Bae I Don't Fall"
+    },
+    {
+      "id": "h1795550098-1771337672763",
+      "hash": "h1795550098",
+      "source": "active-soft",
+      "createdAt": 1771337672763,
+      "title": "×End Poll13:00:12 0Fuma GTA0Aruran GTA0Axel GTA0Luna Minecraft0Zeta Fortnite0Miyabi UMIGARI0Uyu Minecraft0Ririka And Roger0Rikka Minecraft0Okayu Pokemon Emerald",
+      "options": [
+        {
+          "rawLabel": "Fuma GTA",
+          "votes": 0,
+          "canonicalKey": "fuma gta",
+          "entity": null,
+          "groupKey": "fuma gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Aruran GTA",
+          "votes": 0,
+          "canonicalKey": "aruran gta",
+          "entity": null,
+          "groupKey": "aruran gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Axel GTA",
+          "votes": 0,
+          "canonicalKey": "axel gta",
+          "entity": null,
+          "groupKey": "axel gta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Luna Minecraft",
+          "votes": 0,
+          "canonicalKey": "luna minecraft",
+          "entity": "Himemori Luna",
+          "groupKey": "himemori luna",
+          "tags": []
+        },
+        {
+          "rawLabel": "Zeta Fortnite",
+          "votes": 0,
+          "canonicalKey": "zeta fortnite",
+          "entity": "Vestia Zeta",
+          "groupKey": "vestia zeta",
+          "tags": []
+        },
+        {
+          "rawLabel": "Miyabi UMIGARI",
+          "votes": 0,
+          "canonicalKey": "miyabi umigari",
+          "entity": null,
+          "groupKey": "miyabi umigari",
+          "tags": []
+        },
+        {
+          "rawLabel": "Uyu Minecraft",
+          "votes": 0,
+          "canonicalKey": "uyu minecraft",
+          "entity": null,
+          "groupKey": "uyu minecraft",
+          "tags": []
+        },
+        {
+          "rawLabel": "Ririka And Roger",
+          "votes": 0,
+          "canonicalKey": "ririka and roger",
+          "entity": "Ichijou Ririka",
+          "groupKey": "ichijou ririka",
+          "tags": []
+        },
+        {
+          "rawLabel": "Rikka Minecraft",
+          "votes": 0,
+          "canonicalKey": "rikka minecraft",
+          "entity": null,
+          "groupKey": "rikka minecraft",
+          "tags": []
+        },
+        {
+          "rawLabel": "Okayu Pokemon Emerald",
+          "votes": 0,
+          "canonicalKey": "okayu pokemon emerald",
+          "entity": "Nekomata Okayu",
+          "groupKey": "nekomata okayu",
+          "tags": []
+        },
+        {
+          "rawLabel": "Shuba Super Mario World",
+          "votes": 0,
+          "canonicalKey": "shuba super mario world",
+          "entity": "Oozora Subaru",
+          "groupKey": "oozora subaru",
+          "tags": []
+        },
+        {
+          "rawLabel": "Chihaya And Roger",
+          "votes": 0,
+          "canonicalKey": "chihaya and roger",
+          "entity": "Rindo Chihaya",
+          "groupKey": "rindo chihaya",
+          "tags": []
+        },
+        {
+          "rawLabel": "Polka Hologuard",
+          "votes": 0,
+          "canonicalKey": "polka hologuard",
+          "entity": "Omaru Polka",
+          "groupKey": "omaru polka",
+          "tags": []
+        },
+        {
+          "rawLabel": "Iofi Drawing",
+          "votes": 0,
+          "canonicalKey": "iofi drawing",
+          "entity": "Airani Iofifteen",
+          "groupKey": "airani iofifteen",
+          "tags": []
+        },
+        {
+          "rawLabel": "Peko Mario Sports",
+          "votes": 1,
+          "canonicalKey": "peko mario sports",
+          "entity": "Usada Pekora",
+          "groupKey": "usada pekora",
+          "tags": []
+        },
+        {
+          "rawLabel": "Shien And Roger",
+          "votes": 0,
+          "canonicalKey": "shien and roger",
+          "entity": null,
+          "groupKey": "shien and roger",
+          "tags": []
+        },
+        {
+          "rawLabel": "Bae I Don't Fall",
+          "votes": 4,
+          "canonicalKey": "bae i don t fall",
+          "entity": "Hakos Baelz",
+          "groupKey": "hakos baelz",
+          "tags": []
+        }
+      ],
+      "winnerMode": "soft",
+      "winnerOfficialRaw": null,
+      "winnerOfficialGroup": null,
+      "winnerSoftRaw": "Bae I Don't Fall",
+      "winnerSoftGroup": "hakos baelz",
+      "softTie": false,
+      "rawSnippet": "×End Poll13:00:12 0Fuma GTA0Aruran GTA0Axel GTA0Luna Minecraft0Zeta Fortnite0Miyabi UMIGARI0Uyu Minecraft0Ririka And Roger0Rikka Minecraft0Okayu Pokemon Emerald0Shuba Super Mario World0Chihaya And Roger0Polka Hologuard0Iofi Drawing1Peko Mario Sports0Shien And Roger4Bae I Don't Fall"
+    }
+  ]
+}

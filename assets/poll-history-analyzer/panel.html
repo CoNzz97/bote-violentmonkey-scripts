@@ -1,0 +1,42 @@
+<div class="cytube-tools-poll-history-analyzer-head"><strong>Poll History Analyzer</strong></div>
+<label class="cytube-tools-poll-history-analyzer-line">
+  <input type="checkbox" id="cytube-tools-poll-history-analyzer-enabled">
+  Enable tracking
+</label>
+<div class="cytube-tools-poll-history-analyzer-controls">
+  <input type="text" id="cytube-tools-poll-history-analyzer-search" class="form-control" placeholder="Search title/options/winner">
+  <select id="cytube-tools-poll-history-analyzer-winner-filter" class="form-control">
+    <option value="all">All winner modes</option>
+    <option value="official">Official winners</option>
+    <option value="soft">Soft winners</option>
+    <option value="none">No winner</option>
+  </select>
+  <select id="cytube-tools-poll-history-analyzer-view-mode" class="form-control">
+    <option value="grouped">Grouped view</option>
+    <option value="raw">Raw view</option>
+  </select>
+  <label class="cytube-tools-poll-history-analyzer-inline">
+    Soft delay (sec)
+    <input type="number" id="cytube-tools-poll-history-analyzer-soft-delay" min="30" max="600" class="form-control">
+  </label>
+</div>
+<details class="cytube-tools-poll-history-analyzer-advanced">
+  <summary>Advanced Rules</summary>
+  <label class="cytube-tools-poll-history-analyzer-block">
+    Alias rules text (winner DB edits this too)
+    <textarea id="cytube-tools-poll-history-analyzer-alias-rules" class="form-control" rows="4"></textarea>
+  </label>
+  <div class="cytube-tools-poll-history-analyzer-advanced-actions">
+    <button type="button" class="btn btn-sm btn-primary" id="cytube-tools-poll-history-analyzer-save-aliases">Save Alias Text</button>
+  </div>
+</details>
+<div class="cytube-tools-poll-history-analyzer-actions">
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-poll-history-analyzer-open-polls">Open Polls Tab</button>
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-poll-history-analyzer-rescan">Rescan History</button>
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-poll-history-analyzer-mark-soft">Mark Soft Winner Now</button>
+  <button type="button" class="btn btn-sm btn-danger" id="cytube-tools-poll-history-analyzer-clear">Clear</button>
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-poll-history-analyzer-export">Export JSON</button>
+</div>
+<div id="cytube-tools-poll-history-analyzer-stats" class="cytube-tools-poll-history-analyzer-stats"></div>
+<div id="cytube-tools-poll-history-analyzer-winnerdb" class="cytube-tools-poll-history-analyzer-winnerdb"></div>
+<div id="cytube-tools-poll-history-analyzer-list" class="cytube-tools-poll-history-analyzer-list"></div>
