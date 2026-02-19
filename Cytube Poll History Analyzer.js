@@ -1,19 +1,21 @@
 // ==UserScript==
 // @name         Cytube Poll History Analyzer
 // @namespace    cytube.poll.history.analyzer
-// @version      1.7
+// @version      1.9
 // @description  Parse poll history, group name aliases, and track soft winners
 // @match        https://om3tcw.com/r/*
-// @require      https://raw.githubusercontent.com/Migoboteshit/bote-violentmonkey-scripts/main/lib/poll-history-analyzer/storage-utils.js
-// @require      https://raw.githubusercontent.com/Migoboteshit/bote-violentmonkey-scripts/main/lib/poll-history-analyzer/text-utils.js
-// @require      https://raw.githubusercontent.com/Migoboteshit/bote-violentmonkey-scripts/main/lib/poll-history-analyzer/alias-engine.js
-// @require      https://raw.githubusercontent.com/Migoboteshit/bote-violentmonkey-scripts/main/lib/poll-history-analyzer/poll-parser.js
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/storage-utils.js
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/text-utils.js
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/alias-engine.js
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/record-model.js
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/poll-parser.js
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/tracking-engine.js
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // @grant        GM_getValue
 // @grant        GM_setValue
-// @resource     pollHistoryAnalyzerPanelHtml https://raw.githubusercontent.com/Migoboteshit/bote-violentmonkey-scripts/main/assets/poll-history-analyzer/panel.html
-// @resource     pollHistoryAnalyzerStyles https://raw.githubusercontent.com/Migoboteshit/bote-violentmonkey-scripts/main/assets/poll-history-analyzer/styles.css
+// @resource     pollHistoryAnalyzerPanelHtml https://conzz97.github.io/bote-violentmonkey-scripts/assets/poll-history-analyzer/panel.html
+// @resource     pollHistoryAnalyzerStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/poll-history-analyzer/styles.css
 // ==/UserScript==
 
 (function() {
@@ -91,9 +93,11 @@
   const storageUtils = window.CytubePollHistoryAnalyzerStorageUtils;
   const textUtils = window.CytubePollHistoryAnalyzerTextUtils;
   const aliasEngineFactory = window.CytubePollHistoryAnalyzerAliasEngine;
+  const recordModelFactory = window.CytubePollHistoryAnalyzerRecordModel;
   const pollParserFactory = window.CytubePollHistoryAnalyzerPollParser;
+  const trackingEngineFactory = window.CytubePollHistoryAnalyzerTrackingEngine;
 
-  if (!storageUtils || !textUtils || !aliasEngineFactory || !pollParserFactory) {
+  if (!storageUtils || !textUtils || !aliasEngineFactory || !recordModelFactory || !pollParserFactory || !trackingEngineFactory) {
     return;
   }
 
@@ -146,6 +150,15 @@
 
   runtimeAliasData = parseAliasRules(DEFAULT_SETTINGS.aliasRulesText);
 
+  const recordModel = recordModelFactory.create({
+    normalizeText,
+    simpleHash,
+    extractPollClockToken,
+    normalizeTitleForHash,
+    getWinnerGroupKey: (rawWinner) => getWinnerGroupKey(rawWinner),
+    hashBucketMs: HASH_BUCKET_MS
+  });
+
   const pollParser = pollParserFactory.create({
     normalizeText,
     matchEntity: (rawLabel) => matchEntity(rawLabel),
@@ -156,10 +169,6 @@
   const {
     extractVotesFromText,
     stripVotePrefixFromLabel,
-    extractOptionFromElement,
-    extractOptionsFromTextLines,
-    extractTitle,
-    findWinnerByMarker,
     parsePollNode,
     parseActivePollSnapshot
   } = pollParser;
@@ -191,6 +200,20 @@
     }
   };
 
+  const trackingEngine = trackingEngineFactory.create({
+    state,
+    parsePollNode: (node, source) => parsePollNode(node, source),
+    parseActivePollSnapshot: () => parseActivePollSnapshot(),
+    addRecord: (record) => addRecord(record),
+    createRecord: (base) => createRecord(base),
+    extractVotesFromText: (text) => extractVotesFromText(text),
+    stripVotePrefixFromLabel: (rawLabel, votes) => stripVotePrefixFromLabel(rawLabel, votes),
+    buildActivePollSignature: (snapshot, referenceTs) => buildActivePollSignature(snapshot, referenceTs),
+    waitForEl: (selector, attempt = 0) => waitForEl(selector, attempt),
+    pollHistorySelector: '#pollhistory',
+    pollWrapSelector: '#pollwrap'
+  });
+
   function safeGetResourceText(name, fallback = '') {
     try {
       if (typeof GM_getResourceText !== 'function') {
@@ -207,70 +230,15 @@
   }
 
   function buildRecordHashInput(base, createdAt, options) {
-    const safeBase = base && typeof base === 'object' ? base : {};
-    const safeOptions = Array.isArray(options) ? options : [];
-    const optionKeys = Array.from(new Set(
-      safeOptions
-        .map((option) => normalizeText((option && (option.canonicalKey || option.rawLabel)) || ''))
-        .filter(Boolean)
-    )).sort();
-    const pollClock = extractPollClockToken(`${safeBase.title || ''} ${safeBase.rawSnippet || ''}`);
-    const normalizedTitle = normalizeTitleForHash(safeBase.title || '');
-    const normalizedSnippet = normalizeText(safeBase.rawSnippet || '').slice(0, 120);
-    const bucket = Number.isFinite(createdAt) ? Math.floor(createdAt / HASH_BUCKET_MS) : 0;
-
-    if (optionKeys.length) {
-      return [
-        optionKeys.join('|'),
-        pollClock ? `clock:${pollClock}` : `bucket:${bucket}`,
-        `count:${optionKeys.length}`
-      ].join('::');
-    }
-
-    return [
-      normalizedTitle || normalizedSnippet,
-      pollClock ? `clock:${pollClock}` : `bucket:${bucket}`,
-      normalizedSnippet
-    ].join('::');
+    return recordModel.buildRecordHashInput(base, createdAt, options);
   }
 
   function winnerModeRank(mode) {
-    if (mode === 'official') {
-      return 3;
-    }
-    if (mode === 'soft') {
-      return 2;
-    }
-    return 1;
+    return recordModel.winnerModeRank(mode);
   }
 
   function shouldPreferRecord(candidate, existing) {
-    if (!candidate) {
-      return false;
-    }
-    if (!existing) {
-      return true;
-    }
-
-    const candidateRank = winnerModeRank(candidate.winnerMode);
-    const existingRank = winnerModeRank(existing.winnerMode);
-    if (candidateRank !== existingRank) {
-      return candidateRank > existingRank;
-    }
-
-    const candidateWinner = normalizeText(getWinnerRaw(candidate));
-    const existingWinner = normalizeText(getWinnerRaw(existing));
-    if (candidateWinner !== existingWinner) {
-      return candidate.createdAt >= existing.createdAt;
-    }
-
-    const candidateOptions = Array.isArray(candidate.options) ? candidate.options.length : 0;
-    const existingOptions = Array.isArray(existing.options) ? existing.options.length : 0;
-    if (candidateOptions !== existingOptions) {
-      return candidateOptions > existingOptions;
-    }
-
-    return candidate.createdAt > existing.createdAt;
+    return recordModel.shouldPreferRecord(candidate, existing);
   }
 
   function extractTags(rawLabel) {
@@ -285,104 +253,19 @@
   }
 
   function getWinnerRaw(record) {
-    if (!record || typeof record !== 'object') {
-      return '';
-    }
-    if (record.winnerMode === 'official') {
-      return String(record.winnerOfficialRaw || '').trim();
-    }
-    if (record.winnerMode === 'soft') {
-      return String(record.winnerSoftRaw || '').trim();
-    }
-    return '';
+    return recordModel.getWinnerRaw(record);
   }
 
   function createRecord(base) {
-    const createdAt = Number(base.createdAt) || Date.now();
-    const safeOptions = Array.isArray(base.options) ? base.options : [];
-    const winnerOfficialRaw = String(base.winnerOfficialRaw || '').trim() || null;
-    const winnerSoftRaw = String(base.winnerSoftRaw || '').trim() || null;
-    const winnerMode = winnerOfficialRaw ? 'official' : (winnerSoftRaw ? 'soft' : 'none');
-
-    const hash = simpleHash(buildRecordHashInput(base, createdAt, safeOptions));
-    const winnerOfficialGroup = winnerOfficialRaw ? getWinnerGroupKey(winnerOfficialRaw) : null;
-    const winnerSoftGroup = winnerSoftRaw ? getWinnerGroupKey(winnerSoftRaw) : null;
-
-    return {
-      id: `${hash}-${createdAt}`,
-      hash,
-      source: base.source || 'history',
-      createdAt,
-      title: String(base.title || 'Untitled Poll').slice(0, 160),
-      options: safeOptions,
-      winnerMode,
-      winnerOfficialRaw,
-      winnerOfficialGroup,
-      winnerSoftRaw,
-      winnerSoftGroup,
-      softTie: Boolean(base.softTie),
-      rawSnippet: String(base.rawSnippet || '').slice(0, 500)
-    };
+    return recordModel.createRecord(base);
   }
 
   function sanitizeOption(raw) {
-    if (!raw || typeof raw !== 'object') {
-      return null;
-    }
-    const rawLabel = String(raw.rawLabel || '').replace(/\s+/g, ' ').trim();
-    const canonicalKey = normalizeText(raw.canonicalKey || rawLabel);
-    if (!rawLabel || !canonicalKey) {
-      return null;
-    }
-    return {
-      rawLabel,
-      votes: Number.isFinite(Number(raw.votes)) ? Number(raw.votes) : null,
-      canonicalKey,
-      entity: raw.entity ? String(raw.entity) : null,
-      groupKey: normalizeText(raw.groupKey || canonicalKey),
-      tags: Array.isArray(raw.tags) ? raw.tags.map((tag) => String(tag).trim()).filter(Boolean) : []
-    };
+    return recordModel.sanitizeOption(raw);
   }
 
   function sanitizeRecord(raw) {
-    if (!raw || typeof raw !== 'object') {
-      return null;
-    }
-    const createdAt = Number(raw.createdAt);
-    if (!Number.isFinite(createdAt) || createdAt <= 0) {
-      return null;
-    }
-    const options = (Array.isArray(raw.options) ? raw.options : [])
-      .map(sanitizeOption)
-      .filter(Boolean);
-    const title = String(raw.title || '').replace(/\s+/g, ' ').trim();
-    if (!title) {
-      return null;
-    }
-
-    const winnerOfficialRaw = raw.winnerOfficialRaw ? String(raw.winnerOfficialRaw).trim() : null;
-    const winnerSoftRaw = raw.winnerSoftRaw ? String(raw.winnerSoftRaw).trim() : null;
-    const winnerMode = winnerOfficialRaw ? 'official' : (winnerSoftRaw ? 'soft' : 'none');
-    const hash = simpleHash(buildRecordHashInput({
-      title,
-      rawSnippet: String(raw.rawSnippet || '')
-    }, createdAt, options));
-
-    return {
-      id: String(raw.id || `${hash}-${createdAt}`),
-      hash,
-      source: String(raw.source || 'history'),
-      createdAt,
-      title: title.slice(0, 160),
-      options,
-      winnerMode,
-      winnerOfficialRaw,
-      winnerOfficialGroup: winnerOfficialRaw ? normalizeText(raw.winnerOfficialGroup || getWinnerGroupKey(winnerOfficialRaw)) : null,
-      winnerSoftRaw,
-      winnerSoftGroup: winnerSoftRaw ? normalizeText(raw.winnerSoftGroup || getWinnerGroupKey(winnerSoftRaw)) : null,
-      softTie: Boolean(raw.softTie),
-      rawSnippet: String(raw.rawSnippet || '').slice(0, 500)
-    };
+    return recordModel.sanitizeRecord(raw);
   }
 
   function loadSettings() {
@@ -544,370 +427,79 @@
   }
 
   function buildActivePollSignature(snapshot, referenceTs) {
-    if (!snapshot || !Array.isArray(snapshot.options)) {
-      return '';
-    }
-    const ts = Number(referenceTs) || Date.now();
-    return simpleHash(buildRecordHashInput({
-      title: snapshot.title,
-      rawSnippet: snapshot.rawSnippet
-    }, ts, snapshot.options));
+    return recordModel.buildActivePollSignature(snapshot, referenceTs);
   }
 
   function scanPollHistory(force = false) {
-    const pollHistory = document.querySelector('#pollhistory');
-    if (!pollHistory) {
-      return;
-    }
-
-    const nodes = Array.from(pollHistory.children).filter((child) => child instanceof HTMLElement);
-    nodes.forEach((node) => {
-      if (!force && node.dataset.pollHistoryAnalyzerSeen === '1') {
-        return;
-      }
-      const record = parsePollNode(node, 'history');
-      if (record) {
-        addRecord(record);
-      }
-      node.dataset.pollHistoryAnalyzerSeen = '1';
-    });
+    trackingEngine.scanPollHistory(force);
   }
 
   function scheduleHistoryScan(force = false) {
-    if (state.scanTimer) {
-      return;
-    }
-    state.scanTimer = setTimeout(() => {
-      state.scanTimer = null;
-      scanPollHistory(force);
-    }, 200);
+    trackingEngine.scheduleHistoryScan(force);
   }
 
   function clearSoftWinnerTimer() {
-    if (!state.softWinnerTimer) {
-      return;
-    }
-    clearTimeout(state.softWinnerTimer);
-    state.softWinnerTimer = null;
+    trackingEngine.clearSoftWinnerTimer();
   }
 
   function getOptionVote(option) {
-    if (!option || typeof option !== 'object') {
-      return null;
-    }
-    if (Number.isFinite(option.votes)) {
-      return Number(option.votes);
-    }
-    const fallbackVotes = extractVotesFromText(option.rawLabel);
-    return Number.isFinite(fallbackVotes) ? Number(fallbackVotes) : null;
+    return trackingEngine.getOptionVote(option);
   }
 
   function determineSoftWinner(options) {
-    const voted = options
-      .map((option) => {
-        const votes = getOptionVote(option);
-        if (!Number.isFinite(votes)) {
-          return null;
-        }
-        return { option, votes };
-      })
-      .filter(Boolean);
-    if (!voted.length) {
-      return { winner: null, tie: false };
-    }
-
-    let max = -1;
-    voted.forEach((entry) => {
-      if (entry.votes > max) {
-        max = entry.votes;
-      }
-    });
-    const winners = voted.filter((entry) => entry.votes === max);
-    if (!winners.length) {
-      return { winner: null, tie: false };
-    }
-    if (winners.length === 1) {
-      const winnerLabel = stripVotePrefixFromLabel(winners[0].option.rawLabel, winners[0].votes);
-      return { winner: winnerLabel, tie: false };
-    }
-    return {
-      winner: winners.map((entry) => stripVotePrefixFromLabel(entry.option.rawLabel, entry.votes)).join(' | '),
-      tie: true
-    };
+    return trackingEngine.determineSoftWinner(options);
   }
 
   function findLatestNoWinnerRecord() {
-    return state.records.find((record) => (
-      record
-      && record.winnerMode === 'none'
-      && Array.isArray(record.options)
-      && record.options.length >= 2
-    )) || null;
+    return trackingEngine.findLatestNoWinnerRecord();
   }
 
   function captureSoftWinnerFromRecord(record, reason = 'manual-history') {
-    if (!record || !Array.isArray(record.options) || record.options.length < 2) {
-      return false;
-    }
-
-    const soft = determineSoftWinner(record.options);
-    if (!soft.winner) {
-      return false;
-    }
-
-    const signatureKey = `${record.hash}|${reason}`;
-    if (state.completedSoftSignatures.has(signatureKey)) {
-      return false;
-    }
-
-    const optionsWithVotes = record.options.map((option) => {
-      const votes = getOptionVote(option);
-      return {
-        ...option,
-        votes: Number.isFinite(votes) ? votes : null
-      };
-    });
-
-    const softRecord = createRecord({
-      source: 'history-soft',
-      createdAt: Date.now(),
-      title: record.title,
-      options: optionsWithVotes,
-      winnerSoftRaw: soft.winner,
-      softTie: soft.tie,
-      signatureExtra: signatureKey,
-      rawSnippet: record.rawSnippet
-    });
-
-    if (addRecord(softRecord)) {
-      state.completedSoftSignatures.add(signatureKey);
-      return true;
-    }
-    return false;
+    return trackingEngine.captureSoftWinnerFromRecord(record, reason);
   }
 
   function captureSoftWinner(reason = 'timer') {
-    const isManual = reason === 'manual';
-    const snapshot = parseActivePollSnapshot();
-    if (!snapshot) {
-      if (isManual) {
-        const fallbackRecord = findLatestNoWinnerRecord();
-        if (fallbackRecord) {
-          captureSoftWinnerFromRecord(fallbackRecord, 'manual-history');
-        }
-      }
-      return;
-    }
-
-    const signatureTs = state.activePollFirstSeenTs || Date.now();
-    const snapshotSignature = buildActivePollSignature(snapshot, signatureTs);
-    if (!snapshotSignature) {
-      return;
-    }
-
-    const expectedSignature = state.activePollSignature;
-    if (!isManual && (!expectedSignature || snapshotSignature !== expectedSignature)) {
-      return;
-    }
-    if (isManual && (!expectedSignature || snapshotSignature !== expectedSignature)) {
-      const manualTs = state.activePollFirstSeenTs || Date.now();
-      state.activePollFirstSeenTs = manualTs;
-      state.activePollSignature = buildActivePollSignature(snapshot, manualTs);
-      if (!state.activePollSignature) {
-        return;
-      }
-    }
-    const activeSignature = state.activePollSignature || snapshotSignature;
-
-    const soft = determineSoftWinner(snapshot.options);
-    if (!soft.winner) {
-      if (isManual) {
-        const fallbackRecord = findLatestNoWinnerRecord();
-        if (fallbackRecord) {
-          captureSoftWinnerFromRecord(fallbackRecord, 'manual-history');
-        }
-      }
-      return;
-    }
-
-    const voteSignature = snapshot.options
-      .map((option) => {
-        const votes = getOptionVote(option);
-        return Number.isFinite(votes) ? String(votes) : 'x';
-      })
-      .join('|');
-    const firstSeenKey = state.activePollFirstSeenTs || 'manual';
-    const signatureKey = `${activeSignature}|${firstSeenKey}|${voteSignature}`;
-    if (state.completedSoftSignatures.has(signatureKey)) {
-      return;
-    }
-
-    const record = createRecord({
-      source: 'active-soft',
-      createdAt: Date.now(),
-      title: snapshot.title,
-      options: snapshot.options,
-      winnerSoftRaw: soft.winner,
-      softTie: soft.tie,
-      signatureExtra: `${signatureKey}|${reason}`,
-      rawSnippet: snapshot.rawSnippet
-    });
-
-    if (addRecord(record)) {
-      state.completedSoftSignatures.add(signatureKey);
-    }
+    trackingEngine.captureSoftWinner(reason);
   }
 
   function scheduleSoftWinner(snapshot) {
-    clearSoftWinnerTimer();
-    const delayMs = state.settings.softWinnerDelaySec * 1000;
-    state.softWinnerTimer = setTimeout(() => captureSoftWinner('delay'), delayMs);
+    trackingEngine.scheduleSoftWinner(snapshot);
   }
 
   function checkActivePoll() {
-    const snapshot = parseActivePollSnapshot();
-    if (!snapshot) {
-      state.activePollSignature = '';
-      state.activePollFirstSeenTs = 0;
-      clearSoftWinnerTimer();
-      return;
-    }
-
-    const nowTs = Date.now();
-    const snapshotSignature = buildActivePollSignature(snapshot, nowTs);
-    if (!snapshotSignature) {
-      return;
-    }
-
-    if (snapshotSignature === state.activePollSignature) {
-      return;
-    }
-
-    state.activePollSignature = snapshotSignature;
-    state.activePollFirstSeenTs = nowTs;
-    scheduleSoftWinner(snapshot);
+    trackingEngine.checkActivePoll();
   }
 
   function scheduleActivePollCheck() {
-    if (state.activeCheckTimer) {
-      return;
-    }
-    state.activeCheckTimer = setTimeout(() => {
-      state.activeCheckTimer = null;
-      checkActivePoll();
-    }, 300);
+    trackingEngine.scheduleActivePollCheck();
   }
 
   function stopHistoryObserver() {
-    if (!state.historyObserver) {
-      return;
-    }
-    state.historyObserver.disconnect();
-    state.historyObserver = null;
+    trackingEngine.stopHistoryObserver();
   }
 
   function startHistoryObserver() {
-    if (state.historyObserver) {
-      return true;
-    }
-    const pollHistory = document.querySelector('#pollhistory');
-    if (!pollHistory) {
-      return false;
-    }
-
-    state.historyObserver = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        if (mutation.type !== 'childList') {
-          continue;
-        }
-        if (mutation.addedNodes.length || mutation.removedNodes.length) {
-          scheduleHistoryScan(false);
-          return;
-        }
-      }
-    });
-    state.historyObserver.observe(pollHistory, { childList: true, subtree: true });
-    return true;
+    return trackingEngine.startHistoryObserver();
   }
 
   function stopActivePollObserver() {
-    if (!state.activePollObserver) {
-      return;
-    }
-    state.activePollObserver.disconnect();
-    state.activePollObserver = null;
+    trackingEngine.stopActivePollObserver();
   }
 
   function startActivePollObserver() {
-    if (state.activePollObserver) {
-      return true;
-    }
-    const pollWrap = document.querySelector('#pollwrap');
-    if (!pollWrap) {
-      return false;
-    }
-
-    state.activePollObserver = new MutationObserver(() => {
-      scheduleActivePollCheck();
-    });
-    state.activePollObserver.observe(pollWrap, { childList: true, characterData: true, subtree: true });
-    return true;
+    return trackingEngine.startActivePollObserver();
   }
 
   function syncHistoryObserver() {
-    if (!state.settings.enabled) {
-      stopHistoryObserver();
-      return;
-    }
-    if (startHistoryObserver()) {
-      return;
-    }
-    if (state.waitingForPollHistory) {
-      return;
-    }
-    state.waitingForPollHistory = true;
-    waitForEl('#pollhistory').then(() => {
-      state.waitingForPollHistory = false;
-      if (state.settings.enabled) {
-        startHistoryObserver();
-        scheduleHistoryScan(true);
-      }
-    });
+    trackingEngine.syncHistoryObserver();
   }
 
   function syncActivePollObserver() {
-    if (!state.settings.enabled) {
-      stopActivePollObserver();
-      clearSoftWinnerTimer();
-      return;
-    }
-    if (startActivePollObserver()) {
-      return;
-    }
-    if (state.waitingForPollWrap) {
-      return;
-    }
-    state.waitingForPollWrap = true;
-    waitForEl('#pollwrap').then(() => {
-      state.waitingForPollWrap = false;
-      if (state.settings.enabled) {
-        startActivePollObserver();
-        checkActivePoll();
-      }
-    });
+    trackingEngine.syncActivePollObserver();
   }
 
   function syncTrackingState() {
-    if (!state.settings.enabled) {
-      stopHistoryObserver();
-      stopActivePollObserver();
-      clearSoftWinnerTimer();
-      return;
-    }
-    scheduleHistoryScan(true);
-    checkActivePoll();
-    syncHistoryObserver();
-    syncActivePollObserver();
+    trackingEngine.syncTrackingState();
   }
 
   function getWinnerLabel(record) {
