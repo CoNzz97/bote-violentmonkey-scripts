@@ -1,12 +1,16 @@
 // ==UserScript==
 // @name         Cytube User Tags
 // @namespace    cytube.user.tags
-// @version      1.1
+// @version      1.2
 // @description  Local user tags and notes for chat and user list
 // @match        https://om3tcw.com/r/*
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/user-tags/utils.js
 // @grant        GM_addStyle
+// @grant        GM_getResourceText
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @resource     userTagsPanelHtml https://conzz97.github.io/bote-violentmonkey-scripts/assets/user-tags/panel.html
+// @resource     userTagsStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/user-tags/styles.css
 // ==/UserScript==
 
 (function() {
@@ -43,7 +47,24 @@
     import: 'cytube-tools-user-tags-import'
   };
 
+  const RESOURCE_NAMES = {
+    panelHtml: 'userTagsPanelHtml',
+    styles: 'userTagsStyles'
+  };
+
+  const FALLBACK_PANEL_HTML = `
+    <div class="cytube-tools-user-tags-head"><strong>User Tags</strong></div>
+    <div class="cytube-tools-user-tags-empty">
+      Resource load failed. Check script @resource URLs for panel.html/styles.css.
+    </div>
+  `;
+
   const DEFAULT_COLOR = '#5bc0de';
+
+  const userTagsUtils = window.CytubeUserTagsUtils;
+  if (!userTagsUtils) {
+    return;
+  }
 
   const state = {
     enabled: Boolean(safeGetValue(STORAGE_KEYS.enabled, true)),
@@ -75,83 +96,42 @@
     }
   }
 
-  function normalizeUsername(name) {
-    return String(name || '').trim().toLowerCase();
-  }
-
-  function normalizeColor(color, fallback = DEFAULT_COLOR) {
-    const text = String(color || '').trim();
-    const shortHex = /^#([0-9a-fA-F]{3})$/;
-    const longHex = /^#([0-9a-fA-F]{6})$/;
-    if (longHex.test(text)) {
-      return text.toLowerCase();
-    }
-    const shortMatch = text.match(shortHex);
-    if (shortMatch) {
-      const [r, g, b] = shortMatch[1].split('');
-      return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  function safeGetResourceText(name, fallback = '') {
+    try {
+      if (typeof GM_getResourceText !== 'function') {
+        return fallback;
+      }
+      const text = GM_getResourceText(name);
+      if (typeof text === 'string' && text.trim()) {
+        return text;
+      }
+    } catch (err) {
+      // Keep script stable on resource load failures.
     }
     return fallback;
   }
 
+  function normalizeUsername(name) {
+    return userTagsUtils.normalizeUsername(name);
+  }
+
+  function normalizeColor(color, fallback = DEFAULT_COLOR) {
+    return userTagsUtils.normalizeColor(color, fallback);
+  }
+
   function sanitizeTags(tags) {
-    const clean = [];
-    const seen = new Set();
-    (Array.isArray(tags) ? tags : []).forEach((tag) => {
-      const label = String(tag?.label || '').trim();
-      if (!label) {
-        return;
-      }
-      const key = label.toLowerCase();
-      if (seen.has(key)) {
-        return;
-      }
-      seen.add(key);
-      clean.push({
-        label,
-        color: normalizeColor(tag?.color, DEFAULT_COLOR)
-      });
-    });
-    return clean;
+    return userTagsUtils.sanitizeTags(tags, DEFAULT_COLOR);
   }
 
   function sanitizeEntry(rawKey, rawEntry) {
-    const displayName = String(rawEntry?.displayName || rawKey || '').trim();
-    const normalized = normalizeUsername(displayName || rawKey);
-    if (!normalized) {
-      return null;
-    }
-    const tags = sanitizeTags(rawEntry?.tags);
-    const note = String(rawEntry?.note || '').trim().slice(0, NOTE_MAX_LENGTH);
-    if (!tags.length && !note) {
-      return null;
-    }
-    return {
-      key: normalized,
-      value: {
-        displayName: displayName || rawKey,
-        tags,
-        note,
-        updatedAt: Number(rawEntry?.updatedAt) || Date.now()
-      }
-    };
+    return userTagsUtils.sanitizeEntry(rawKey, rawEntry, {
+      defaultColor: DEFAULT_COLOR,
+      noteMaxLength: NOTE_MAX_LENGTH
+    });
   }
 
   function parseStoredObject(raw) {
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      return raw;
-    }
-    if (typeof raw === 'string') {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (err) {
-        return {};
-      }
-    }
-    return {};
+    return userTagsUtils.parseStoredObject(raw);
   }
 
   function loadTagsData() {
@@ -226,37 +206,7 @@
   }
 
   function parseTagsInput(raw, defaultColor) {
-    const tokens = String(raw || '').split(/[\n,]/g);
-    const tags = [];
-    const seen = new Set();
-
-    tokens.forEach((token) => {
-      const trimmed = token.trim();
-      if (!trimmed) {
-        return;
-      }
-
-      let label = trimmed;
-      let color = defaultColor;
-
-      const pipeIndex = trimmed.indexOf('|');
-      if (pipeIndex > -1) {
-        label = trimmed.slice(0, pipeIndex).trim();
-        color = normalizeColor(trimmed.slice(pipeIndex + 1).trim(), defaultColor);
-      }
-
-      if (!label) {
-        return;
-      }
-      const key = label.toLowerCase();
-      if (seen.has(key)) {
-        return;
-      }
-      seen.add(key);
-      tags.push({ label, color });
-    });
-
-    return tags;
+    return userTagsUtils.parseTagsInput(raw, defaultColor);
   }
 
   function setEntry(username, tags, note) {
@@ -793,162 +743,27 @@
     if (!state.ui.panel) {
       return;
     }
-    state.ui.panel.innerHTML = `
-      <div class="cytube-tools-user-tags-head"><strong>User Tags</strong></div>
-      <label class="cytube-tools-user-tags-line">
-        <input type="checkbox" id="${UI_IDS.enabled}">
-        Enable inline tags
-      </label>
-
-      <div class="cytube-tools-user-tags-form">
-        <input id="${UI_IDS.username}" class="form-control" type="text" placeholder="Username">
-        <input id="${UI_IDS.tags}" class="form-control" type="text" placeholder="Tags (example: TL|#4caf50, clipper|#ff9800)">
-        <label class="cytube-tools-user-tags-line">
-          Default tag color
-          <input id="${UI_IDS.color}" type="color" value="${DEFAULT_COLOR}">
-        </label>
-        <textarea id="${UI_IDS.note}" class="form-control" rows="2" placeholder="Optional note"></textarea>
-        <div class="cytube-tools-user-tags-actions">
-          <button type="button" class="btn btn-sm btn-primary" id="${UI_IDS.save}">Save</button>
-          <button type="button" class="btn btn-sm btn-default" id="${UI_IDS.reset}">Clear Form</button>
-        </div>
-      </div>
-
-      <input id="${UI_IDS.search}" class="form-control cytube-tools-user-tags-search" type="text" placeholder="Search users/tags/notes">
-      <div id="${UI_IDS.list}" class="cytube-tools-user-tags-list"></div>
-
-      <div class="cytube-tools-user-tags-subhead"><strong>Import / Export</strong></div>
-      <textarea id="${UI_IDS.json}" class="form-control" rows="4" placeholder="JSON data"></textarea>
-      <div class="cytube-tools-user-tags-actions">
-        <button type="button" class="btn btn-sm btn-default" id="${UI_IDS.export}">Export</button>
-        <button type="button" class="btn btn-sm btn-default" id="${UI_IDS.import}">Import</button>
-      </div>
-    `;
+    state.ui.panel.innerHTML = safeGetResourceText(RESOURCE_NAMES.panelHtml, FALLBACK_PANEL_HTML);
     bindPanelEvents();
     resetForm();
     renderEntriesList();
   }
 
-  GM_addStyle(`
-    #${TOGGLE_ID}.active {
-      background: #337ab7 !important;
-      border-color: #2e6da4 !important;
-      color: #fff !important;
-    }
-    .${PANEL_CLASS} {
-      display: none;
-      padding: 10px;
-      background: #1f1f1f;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #ddd;
-      margin-bottom: 10px;
-    }
-    .cytube-tools-user-tags-head {
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .cytube-tools-user-tags-subhead {
-      margin: 10px 0 6px;
-      font-size: 13px;
-    }
-    .cytube-tools-user-tags-line {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: normal;
-    }
-    .cytube-tools-user-tags-form {
-      display: grid;
-      gap: 6px;
-      margin-bottom: 10px;
-    }
-    .cytube-tools-user-tags-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-top: 2px;
-      margin-bottom: 8px;
-    }
-    .cytube-tools-user-tags-search {
-      margin-bottom: 8px;
-    }
-    .cytube-tools-user-tags-list {
-      max-height: 280px;
-      overflow-y: auto;
-      border: 1px solid #2d2d2d;
-      border-radius: 4px;
-      background: #171717;
-      padding: 6px;
-    }
-    .cytube-tools-user-tags-row {
-      border-bottom: 1px solid #2d2d2d;
-      padding: 6px 0;
-    }
-    .cytube-tools-user-tags-row:last-child {
-      border-bottom: none;
-    }
-    .cytube-tools-user-tags-row-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
-    .cytube-tools-user-tags-name {
-      font-weight: 700;
-      color: #f1f3f4;
-    }
-    .cytube-tools-user-tags-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-    .cytube-tools-user-tags-row-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-    .cytube-tools-user-tags-row-tag {
-      padding: 1px 6px;
-      border-radius: 12px;
-      font-size: 11px;
-      color: #111;
-      font-weight: 700;
-    }
-    .cytube-tools-user-tags-row-note {
-      margin-top: 4px;
-      color: #c6cad1;
-      font-size: 12px;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-    .cytube-tools-user-tags-empty {
-      color: #8a8a8a;
-      font-style: italic;
-    }
-    .${INLINE_CLASS} {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      margin-left: 6px;
-      vertical-align: middle;
-      flex-wrap: wrap;
-    }
-    .cytube-tools-user-tags-badge {
-      padding: 1px 6px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: 700;
-      color: #111;
-      cursor: pointer;
-    }
-    .cytube-tools-user-tags-note {
-      cursor: pointer;
-      font-size: 12px;
-      line-height: 1;
-      color: #ffd166;
-    }
-  `);
+  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+  if (resourceCss) {
+    GM_addStyle(resourceCss);
+  } else {
+    GM_addStyle(`
+      #${TOGGLE_ID}.active {
+        background: #337ab7 !important;
+        border-color: #2e6da4 !important;
+        color: #fff !important;
+      }
+      .${PANEL_CLASS} {
+        display: none;
+      }
+    `);
+  }
 
   (async () => {
     const toolsUi = await ensureToolsUi();

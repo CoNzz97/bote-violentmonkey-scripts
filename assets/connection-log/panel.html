@@ -1,0 +1,21 @@
+<div class="cytube-tools-connection-log-head"><strong>Connection Log</strong></div>
+<label class="cytube-tools-connection-log-line">
+  <input type="checkbox" id="cytube-tools-connection-log-enabled">
+  Enable logging
+</label>
+<label class="cytube-tools-connection-log-line">
+  Dedupe window (ms)
+  <input type="number" id="cytube-tools-connection-log-dedupe" class="form-control cytube-tools-connection-log-number" min="0" max="30000">
+</label>
+<input type="text" id="cytube-tools-connection-log-search" class="form-control cytube-tools-connection-log-search" placeholder="Search username">
+<div class="cytube-tools-connection-log-filters">
+  <button type="button" class="btn btn-xs btn-default" id="cytube-tools-connection-log-filter-all">All</button>
+  <button type="button" class="btn btn-xs btn-default" id="cytube-tools-connection-log-filter-join">Joins</button>
+  <button type="button" class="btn btn-xs btn-default" id="cytube-tools-connection-log-filter-leave">Leaves</button>
+</div>
+<div id="cytube-tools-connection-log-counters" class="cytube-tools-connection-log-counters"></div>
+<div class="cytube-tools-connection-log-actions">
+  <button type="button" class="btn btn-sm btn-danger" id="cytube-tools-connection-log-clear">Clear</button>
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-connection-log-export">Export JSON</button>
+</div>
+<div id="cytube-tools-connection-log-timeline" class="cytube-tools-connection-log-timeline"></div>

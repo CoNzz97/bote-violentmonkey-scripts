@@ -1,12 +1,16 @@
 // ==UserScript==
 // @name         Cytube Connection Log
 // @namespace    cytube.connection.log
-// @version      1.1
+// @version      1.2
 // @description  Live join/leave timeline based on user list changes
 // @match        https://om3tcw.com/r/*
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/connection-log/utils.js
 // @grant        GM_addStyle
+// @grant        GM_getResourceText
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @resource     connectionLogPanelHtml https://conzz97.github.io/bote-violentmonkey-scripts/assets/connection-log/panel.html
+// @resource     connectionLogStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/connection-log/styles.css
 // ==/UserScript==
 
 (function() {
@@ -45,6 +49,23 @@
     export: 'cytube-tools-connection-log-export',
     timeline: 'cytube-tools-connection-log-timeline'
   };
+
+  const RESOURCE_NAMES = {
+    panelHtml: 'connectionLogPanelHtml',
+    styles: 'connectionLogStyles'
+  };
+
+  const FALLBACK_PANEL_HTML = `
+    <div class="cytube-tools-connection-log-head"><strong>Connection Log</strong></div>
+    <div class="cytube-tools-connection-log-empty">
+      Resource load failed. Check script @resource URLs for panel.html/styles.css.
+    </div>
+  `;
+
+  const connectionLogUtils = window.CytubeConnectionLogUtils;
+  if (!connectionLogUtils) {
+    return;
+  }
 
   const initialEntries = loadEntries();
 
@@ -85,110 +106,51 @@
     }
   }
 
-  function parseStoredObject(raw) {
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      return raw;
-    }
-    if (typeof raw === 'string') {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (err) {
-        return {};
+  function safeGetResourceText(name, fallback = '') {
+    try {
+      if (typeof GM_getResourceText !== 'function') {
+        return fallback;
       }
-    }
-    return {};
-  }
-
-  function parseStoredArray(raw) {
-    if (Array.isArray(raw)) {
-      return raw;
-    }
-    if (typeof raw === 'string') {
-      try {
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (err) {
-        return [];
+      const text = GM_getResourceText(name);
+      if (typeof text === 'string' && text.trim()) {
+        return text;
       }
-    }
-    return [];
-  }
-
-  function normalizeUsername(value) {
-    return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
-  }
-
-  function clampNumber(value, min, max, fallback) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return fallback;
-    }
-    return Math.min(max, Math.max(min, parsed));
-  }
-
-  function parseBoolean(value, fallback) {
-    if (typeof value === 'boolean') {
-      return value;
-    }
-    if (typeof value === 'number') {
-      return value !== 0;
-    }
-    if (typeof value === 'string') {
-      const normalized = value.trim().toLowerCase();
-      if (normalized === 'true' || normalized === '1') {
-        return true;
-      }
-      if (normalized === 'false' || normalized === '0') {
-        return false;
-      }
+    } catch (err) {
+      // Keep script stable on resource load failures.
     }
     return fallback;
   }
 
+  function parseStoredObject(raw) {
+    return connectionLogUtils.parseStoredObject(raw);
+  }
+
+  function parseStoredArray(raw) {
+    return connectionLogUtils.parseStoredArray(raw);
+  }
+
+  function normalizeUsername(value) {
+    return connectionLogUtils.normalizeUsername(value);
+  }
+
+  function clampNumber(value, min, max, fallback) {
+    return connectionLogUtils.clampNumber(value, min, max, fallback);
+  }
+
+  function parseBoolean(value, fallback) {
+    return connectionLogUtils.parseBoolean(value, fallback);
+  }
+
   function sanitizeFilter(value) {
-    if (value === 'join' || value === 'leave') {
-      return value;
-    }
-    return 'all';
+    return connectionLogUtils.sanitizeFilter(value);
   }
 
   function formatTimestamp(ts) {
-    try {
-      return new Date(ts).toLocaleTimeString();
-    } catch (err) {
-      return '';
-    }
+    return connectionLogUtils.formatTimestamp(ts);
   }
 
   function sanitizeEntry(raw) {
-    if (!raw || typeof raw !== 'object') {
-      return null;
-    }
-
-    const type = raw.type === 'join' || raw.type === 'leave' ? raw.type : '';
-    if (!type) {
-      return null;
-    }
-
-    const username = String(raw.username || '').replace(/\s+/g, ' ').trim();
-    const userKey = normalizeUsername(raw.userKey || username);
-    if (!username || !userKey) {
-      return null;
-    }
-
-    const ts = Number(raw.ts);
-    if (!Number.isFinite(ts) || ts <= 0) {
-      return null;
-    }
-
-    const role = String(raw.role || 'user').replace(/\s+/g, ' ').trim() || 'user';
-    const id = String(raw.id || `${ts}-${type}-${userKey}`);
-    const timeLabel = String(raw.timeLabel || formatTimestamp(ts));
-
-    return { id, ts, timeLabel, type, username, userKey, role };
+    return connectionLogUtils.sanitizeEntry(raw);
   }
 
   function loadEntries() {
@@ -327,126 +289,27 @@
   }
 
   function getRoleLabel(row, nameSpan) {
-    const classText = `${row.className || ''} ${nameSpan ? nameSpan.className : ''}`;
-    const labels = [];
-
-    if (/\buserlist_owner\b/i.test(classText)) {
-      labels.push('owner');
-    } else if (/\buserlist_admin\b/i.test(classText)) {
-      labels.push('admin');
-    } else if (/\buserlist_op\b/i.test(classText)) {
-      labels.push('op');
-    } else if (/\buserlist_guest\b/i.test(classText)) {
-      labels.push('guest');
-    }
-
-    if (/\buserlist_afk\b/i.test(classText)) {
-      labels.push('afk');
-    }
-
-    return labels.length ? labels.join(', ') : 'user';
+    return connectionLogUtils.getRoleLabel(row, nameSpan);
   }
 
   function extractUserInfoFromRow(row) {
-    if (!(row instanceof HTMLElement)) {
-      return null;
-    }
-
-    const spans = Array.from(row.children).filter((node) => node instanceof HTMLSpanElement);
-    let nameSpan = spans.find((span) => {
-      const classText = span.className || '';
-      return /\buserlist_(owner|admin|op|guest)\b/i.test(classText);
-    }) || null;
-
-    if (!nameSpan) {
-      nameSpan = spans.find((span) => {
-        if (span.querySelector('.glyphicon-time')) {
-          return false;
-        }
-        const text = span.textContent.replace(/\s+/g, ' ').trim();
-        return Boolean(text);
-      }) || null;
-    }
-
-    let username = nameSpan ? nameSpan.textContent.replace(/\s+/g, ' ').trim() : '';
-    if (!username && row.id && row.id.startsWith('useritem-')) {
-      username = row.id.slice('useritem-'.length).trim();
-    }
-
-    const userKey = normalizeUsername(username);
-    if (!userKey) {
-      return null;
-    }
-
-    return {
-      username,
-      userKey,
-      role: getRoleLabel(row, nameSpan)
-    };
+    return connectionLogUtils.extractUserInfoFromRow(row);
   }
 
   function snapshotUserMap() {
-    const map = new Map();
-    document.querySelectorAll('#userlist .userlist_item').forEach((row) => {
-      const info = extractUserInfoFromRow(row);
-      if (!info || map.has(info.userKey)) {
-        return;
-      }
-      map.set(info.userKey, info);
-    });
-    return map;
+    return connectionLogUtils.snapshotUserMap();
   }
 
   function diffPresenceMaps(previousMap, nextMap) {
-    const events = [];
-
-    nextMap.forEach((info, userKey) => {
-      if (!previousMap.has(userKey)) {
-        events.push({ type: 'join', ...info });
-      }
-    });
-
-    previousMap.forEach((info, userKey) => {
-      if (!nextMap.has(userKey)) {
-        events.push({ type: 'leave', ...info });
-      }
-    });
-
-    return events;
+    return connectionLogUtils.diffPresenceMaps(previousMap, nextMap);
   }
 
   function nodeIsUserRow(node) {
-    if (!(node instanceof HTMLElement)) {
-      return false;
-    }
-    if (node.classList.contains('userlist_item')) {
-      return true;
-    }
-    if (node.id && node.id.startsWith('useritem-')) {
-      return true;
-    }
-    return false;
+    return connectionLogUtils.nodeIsUserRow(node);
   }
 
   function mutationAffectsRoster(mutation) {
-    if (!mutation || mutation.type !== 'childList') {
-      return false;
-    }
-
-    for (const node of mutation.addedNodes) {
-      if (nodeIsUserRow(node)) {
-        return true;
-      }
-    }
-
-    for (const node of mutation.removedNodes) {
-      if (nodeIsUserRow(node)) {
-        return true;
-      }
-    }
-
-    const target = mutation.target instanceof HTMLElement ? mutation.target : null;
-    return Boolean(target && target.id === 'userlist' && (mutation.addedNodes.length || mutation.removedNodes.length));
+    return connectionLogUtils.mutationAffectsRoster(mutation);
   }
 
   function pruneRecentEventTimes(now) {
@@ -590,40 +453,11 @@
   }
 
   function getCounts(entries) {
-    let joins = 0;
-    let leaves = 0;
-    entries.forEach((entry) => {
-      if (entry.type === 'join') {
-        joins += 1;
-      } else if (entry.type === 'leave') {
-        leaves += 1;
-      }
-    });
-    return { joins, leaves, net: joins - leaves };
+    return connectionLogUtils.getCounts(entries);
   }
 
   function extractConnectedUsersFromElement(userCountEl) {
-    if (!(userCountEl instanceof HTMLElement)) {
-      return null;
-    }
-
-    const clone = userCountEl.cloneNode(true);
-    if (clone instanceof HTMLElement) {
-      clone.querySelectorAll('.profile-box').forEach((node) => node.remove());
-    }
-
-    const text = clone.textContent.replace(/\s+/g, ' ').trim();
-    if (!text) {
-      return null;
-    }
-
-    const connectedMatch = text.match(/(\d+)\s*(?:connected\s*users?|users?\s*connected)/i);
-    if (connectedMatch) {
-      return Number(connectedMatch[1]);
-    }
-
-    const firstNumberMatch = text.match(/(\d+)/);
-    return firstNumberMatch ? Number(firstNumberMatch[1]) : null;
+    return connectionLogUtils.extractConnectedUsersFromElement(userCountEl);
   }
 
   function refreshConnectedUsersCount() {
@@ -922,140 +756,27 @@
       return;
     }
 
-    state.ui.panel.innerHTML = `
-      <div class="cytube-tools-connection-log-head"><strong>Connection Log</strong></div>
-      <label class="cytube-tools-connection-log-line">
-        <input type="checkbox" id="${UI_IDS.enabled}">
-        Enable logging
-      </label>
-      <label class="cytube-tools-connection-log-line">
-        Dedupe window (ms)
-        <input type="number" id="${UI_IDS.dedupeMs}" class="form-control cytube-tools-connection-log-number" min="0" max="30000">
-      </label>
-      <input type="text" id="${UI_IDS.search}" class="form-control cytube-tools-connection-log-search" placeholder="Search username">
-      <div class="cytube-tools-connection-log-filters">
-        <button type="button" class="btn btn-xs btn-default" id="${UI_IDS.filterAll}">All</button>
-        <button type="button" class="btn btn-xs btn-default" id="${UI_IDS.filterJoin}">Joins</button>
-        <button type="button" class="btn btn-xs btn-default" id="${UI_IDS.filterLeave}">Leaves</button>
-      </div>
-      <div id="${UI_IDS.counters}" class="cytube-tools-connection-log-counters"></div>
-      <div class="cytube-tools-connection-log-actions">
-        <button type="button" class="btn btn-sm btn-danger" id="${UI_IDS.clear}">Clear</button>
-        <button type="button" class="btn btn-sm btn-default" id="${UI_IDS.export}">Export JSON</button>
-      </div>
-      <div id="${UI_IDS.timeline}" class="cytube-tools-connection-log-timeline"></div>
-    `;
+    state.ui.panel.innerHTML = safeGetResourceText(RESOURCE_NAMES.panelHtml, FALLBACK_PANEL_HTML);
 
     bindUiEvents();
     fillFormFromSettings();
   }
 
-  GM_addStyle(`
-    #${TOGGLE_ID}.active {
-      background: #337ab7 !important;
-      border-color: #2e6da4 !important;
-      color: #fff !important;
-    }
-    .${PANEL_CLASS} {
-      display: none;
-      padding: 10px;
-      background: #1f1f1f;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #ddd;
-      margin-bottom: 10px;
-    }
-    .cytube-tools-connection-log-head {
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .cytube-tools-connection-log-line {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: normal;
-    }
-    .cytube-tools-connection-log-number {
-      width: 130px;
-      display: inline-block;
-      margin-left: 8px;
-    }
-    .cytube-tools-connection-log-search {
-      margin-bottom: 8px;
-    }
-    .cytube-tools-connection-log-filters {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
-    .cytube-tools-connection-log-filters .btn.active {
-      background: #2e6da4;
-      border-color: #255b88;
-      color: #fff;
-    }
-    .cytube-tools-connection-log-counters {
-      font-size: 12px;
-      color: #cfd4db;
-      margin-bottom: 8px;
-      background: #171717;
-      border: 1px solid #2d2d2d;
-      border-radius: 4px;
-      padding: 6px;
-      word-break: break-word;
-    }
-    .cytube-tools-connection-log-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-    .cytube-tools-connection-log-timeline {
-      max-height: 320px;
-      overflow-y: auto;
-      background: #171717;
-      border: 1px solid #2d2d2d;
-      border-radius: 4px;
-      padding: 6px;
-    }
-    .cytube-tools-connection-log-row {
-      border-bottom: 1px solid #2d2d2d;
-      padding: 5px 0;
-      font-size: 12px;
-    }
-    .cytube-tools-connection-log-row:last-child {
-      border-bottom: none;
-    }
-    .cytube-tools-connection-log-row-join {
-      box-shadow: inset 2px 0 0 #45c46b;
-      padding-left: 6px;
-    }
-    .cytube-tools-connection-log-row-leave {
-      box-shadow: inset 2px 0 0 #de6b6b;
-      padding-left: 6px;
-    }
-    .cytube-tools-connection-log-top {
-      display: flex;
-      align-items: baseline;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .cytube-tools-connection-log-time {
-      color: #9aa0a6;
-      min-width: 72px;
-    }
-    .cytube-tools-connection-log-summary {
-      color: #edf0f3;
-      font-weight: 600;
-    }
-    .cytube-tools-connection-log-meta {
-      color: #b5bcc4;
-      margin-top: 2px;
-    }
-    .cytube-tools-connection-log-empty {
-      color: #8a8a8a;
-      font-style: italic;
-    }
-  `);
+  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+  if (resourceCss) {
+    GM_addStyle(resourceCss);
+  } else {
+    GM_addStyle(`
+      #${TOGGLE_ID}.active {
+        background: #337ab7 !important;
+        border-color: #2e6da4 !important;
+        color: #fff !important;
+      }
+      .${PANEL_CLASS} {
+        display: none;
+      }
+    `);
+  }
 
   (async () => {
     const toolsUi = await ensureToolsUi();

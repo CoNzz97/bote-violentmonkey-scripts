@@ -1,0 +1,29 @@
+<div class="cytube-tools-user-tags-head"><strong>User Tags</strong></div>
+<label class="cytube-tools-user-tags-line">
+  <input type="checkbox" id="cytube-tools-user-tags-enabled">
+  Enable inline tags
+</label>
+
+<div class="cytube-tools-user-tags-form">
+  <input id="cytube-tools-user-tags-username" class="form-control" type="text" placeholder="Username">
+  <input id="cytube-tools-user-tags-tags" class="form-control" type="text" placeholder="Tags (example: TL|#4caf50, clipper|#ff9800)">
+  <label class="cytube-tools-user-tags-line">
+    Default tag color
+    <input id="cytube-tools-user-tags-color" type="color" value="#5bc0de">
+  </label>
+  <textarea id="cytube-tools-user-tags-note" class="form-control" rows="2" placeholder="Optional note"></textarea>
+  <div class="cytube-tools-user-tags-actions">
+    <button type="button" class="btn btn-sm btn-primary" id="cytube-tools-user-tags-save">Save</button>
+    <button type="button" class="btn btn-sm btn-default" id="cytube-tools-user-tags-reset">Clear Form</button>
+  </div>
+</div>
+
+<input id="cytube-tools-user-tags-search" class="form-control cytube-tools-user-tags-search" type="text" placeholder="Search users/tags/notes">
+<div id="cytube-tools-user-tags-list" class="cytube-tools-user-tags-list"></div>
+
+<div class="cytube-tools-user-tags-subhead"><strong>Import / Export</strong></div>
+<textarea id="cytube-tools-user-tags-json" class="form-control" rows="4" placeholder="JSON data"></textarea>
+<div class="cytube-tools-user-tags-actions">
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-user-tags-export">Export</button>
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-user-tags-import">Import</button>
+</div>
