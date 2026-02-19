@@ -1,0 +1,55 @@
+#holodex-overlay {
+  background: rgba(20, 20, 20, 0.95);
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  font-family: sans-serif;
+  font-size: 13px;
+  margin-bottom: 10px;
+  border: 1px solid #444;
+}
+
+#holodex-overlay h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #6c5ce7;
+}
+
+#holodex-overlay ul {
+  margin: 8px 0 0 0;
+  padding-left: 18px;
+  max-height: 450px;
+  overflow-y: auto;
+  list-style-type: disc;
+}
+
+#holodex-overlay li {
+  margin-bottom: 8px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 4px;
+}
+
+#holodex-overlay a:hover {
+  text-decoration: underline !important;
+  color: #6c5ce7 !important;
+}
+
+#holodex-toggle-btn.active {
+  background: #6c5ce7 !important;
+  color: #fff;
+}
+
+#holodex-overlay select,
+#holodex-overlay button {
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 2px 5px;
+  cursor: pointer;
+}
+
+#include-males-toggle,
+#upcoming-toggle {
+  margin-right: 4px;
+}

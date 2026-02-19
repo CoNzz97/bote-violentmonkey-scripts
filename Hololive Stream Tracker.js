@@ -1,13 +1,16 @@
 // ==UserScript==
 // @name Hololive Stream Tracker
 // @namespace holodex.tracker
-// @version 2.8.1
+// @version 2.9.0
 // @description Shows streams
 // @match https://om3tcw.com/r/*
+// @require https://conzz97.github.io/bote-violentmonkey-scripts/lib/hololive-stream-tracker/utils.js
 // @grant GM_xmlhttpRequest
 // @grant GM_addStyle
+// @grant GM_getResourceText
 // @grant GM_setValue
 // @grant GM_getValue
+// @resource hololiveStreamTrackerStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/hololive-stream-tracker/styles.css
 // @connect holodex.net
 // ==/UserScript==
 
@@ -23,6 +26,16 @@
     overlay: 'holodex-overlay',
     toggleButton: 'holodex-toggle-btn'
   };
+  const RETRY_DELAY_MS = 500;
+  const MAX_RETRIES = 120;
+  const RESOURCE_NAMES = {
+    styles: 'hololiveStreamTrackerStyles'
+  };
+
+  const hololiveUtils = window.CytubeHololiveStreamTrackerUtils;
+  if (!hololiveUtils) {
+    return;
+  }
 
   let API_KEY = GM_getValue(STORAGE_KEYS.apiKey);
   const API_BASE = 'https://holodex.net/api/v2';
@@ -50,14 +63,47 @@
     ...['Karaoke', '3D', 'Watchalong', 'Birthday', 'Outfit Reveal', 'Premiere', 'Concert', 'Original Song', 'Music Cover', 'Holofes', 'Singing'].sort()
   ];
 
-  const KEYWORD_REGEXES = KEYWORDS.map(kw => new RegExp(kw.replace(/[-_\\s]+/g, '[-_\\\\s]+'), 'i'));
+  const KEYWORD_REGEXES = hololiveUtils.buildKeywordRegexes(KEYWORDS);
 
   let currentStreams = [];
   let currentFilter = 'All';
   let showUpcomingOnly = false;
-  let includeMales = GM_getValue(STORAGE_KEYS.includeMales, false);
+  let includeMales = hololiveUtils.parseBoolean(GM_getValue(STORAGE_KEYS.includeMales, false), false);
 
   // --- Helper Functions ---
+
+  function safeGetResourceText(name, fallback = '') {
+    try {
+      if (typeof GM_getResourceText !== 'function') {
+        return fallback;
+      }
+      const text = GM_getResourceText(name);
+      if (typeof text === 'string' && text.trim()) {
+        return text;
+      }
+    } catch (err) {
+      // Keep script stable on resource load failures.
+    }
+    return fallback;
+  }
+
+  function waitForEl(selector, attempt = 0) {
+    const node = document.querySelector(selector);
+    if (node) {
+      return Promise.resolve(node);
+    }
+    if (attempt >= MAX_RETRIES) {
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
+      .then(() => waitForEl(selector, attempt + 1));
+  }
+
+  function openToolsTab() {
+    if (typeof window.jQuery !== 'undefined') {
+      window.jQuery('a[href="#toolsTab"]').tab('show');
+    }
+  }
 
   function checkApiKey() {
     if (!API_KEY) {
@@ -81,64 +127,19 @@
   }
 
   function isHololive(channel, allowHolostars = false) {
-    if (!channel) return false;
-    const name = (channel.name || '').toLowerCase();
-    const enName = (channel.english_name || '').toLowerCase();
-    const org = (channel.org || '').toLowerCase();
-    const suborg = (channel.suborg || '').toLowerCase();
-
-    const isHolostars = /holostars/i.test(name + enName + org + suborg) || /ホロスターズ/i.test(name);
-    if (isHolostars && !allowHolostars) return false;
-
-    return (
-      org.includes('hololive') || suborg.includes('hololive') ||
-      name.includes('hololive') || enName.includes('hololive') ||
-      /hololive[-_\\s]*(en|id|jp|english|indonesia|justice)/i.test(name + enName + org + suborg)
-    );
+    return hololiveUtils.isHololive(channel, allowHolostars);
   }
 
   function formatUKDate(dateString) {
-    const d = new Date(dateString);
-    return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()} - ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    return hololiveUtils.formatUKDate(dateString);
   }
 
   function formatTimeUntil(video) {
-    const isLive = video.status === 'live' || video.start_actual;
-    const now = new Date();
-
-    if (isLive) {
-      const start = new Date(video.start_actual || video.start_scheduled || video.available_at);
-      const diffMs = Math.max(0, now - start); // Ensure no negative time
-
-      const totalMinutes = Math.floor(diffMs / 60000);
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-
-      // Format: [Live for HH:MM]
-      return `[${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}]`;
-    }
-
-    const target = new Date(video.start_scheduled || video.available_at);
-    let diffMs = target - now;
-    if (diffMs < 0) return '[past]';
-    const days = Math.floor(diffMs / 86400000);
-    const hours = Math.floor((diffMs % 86400000) / 3600000);
-    const minutes = Math.floor((diffMs % 3600000) / 60000);
-    let parts = [];
-    if (days > 0) parts.push(`${days}d`);
-    if (days > 0 || hours > 0) parts.push(`${hours}h`);
-    parts.push(`${minutes.toString().padStart(2, '0')}m`);
-    return `[${parts.join(' ')}]`;
+    return hololiveUtils.formatTimeUntil(video);
   }
 
   function getStreamTag(video) {
-    for (const kw of KEYWORDS) {
-      const rx = KEYWORD_REGEXES[KEYWORDS.indexOf(kw)];
-      if (rx.test(video.title || '') || rx.test(video.topic_id || '') || rx.test(video.description || '')) {
-        return TAG_MAP[kw] || kw;
-      }
-    }
-    return video.type === 'premiere' ? 'Premiere' : '';
+    return hololiveUtils.getStreamTag(video, KEYWORDS, KEYWORD_REGEXES, TAG_MAP);
   }
 
   // --- Core Logic ---
@@ -294,10 +295,9 @@
     contentArea.appendChild(box);
   }
 
-  function createToggleButton() {
-    const container = document.getElementById('tools-button-container');
+  async function createToggleButton() {
+    const container = await waitForEl('#tools-button-container');
     if (!container) {
-      setTimeout(createToggleButton, 500);
       return;
     }
     if (document.getElementById(IDS.toggleButton)) {
@@ -316,26 +316,28 @@
         btn.classList.remove('active');
       } else {
         btn.classList.add('active');
-        if (typeof $ !== 'undefined') {
-            $('#channelsettings').modal('show');
-            $('a[href="#toolsTab"]').tab('show');
-        }
+        openToolsTab();
         fetchUpcomingStreams();
       }
     });
     container.appendChild(btn);
   }
 
-  GM_addStyle(`
-    #holodex-overlay { background: rgba(20,20,20,0.95); color: #fff; border-radius: 10px; padding: 12px; font-family: sans-serif; font-size: 13px; margin-bottom: 10px; border: 1px solid #444; }
-    #holodex-overlay h3 { margin: 0; font-size: 14px; color: #6c5ce7; }
-    #holodex-overlay ul { margin: 8px 0 0 0; padding-left: 18px; max-height: 450px; overflow-y: auto; list-style-type: disc; }
-    #holodex-overlay li { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
-    #holodex-overlay a:hover { text-decoration: underline !important; color: #6c5ce7 !important; }
-    #holodex-toggle-btn.active { background: #6c5ce7 !important; color: white; }
-    #holodex-overlay select, #holodex-overlay button { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 2px 5px; cursor: pointer; }
-    #include-males-toggle, #upcoming-toggle { margin-right: 4px; }
-  `);
+  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+  if (resourceCss) {
+    GM_addStyle(resourceCss);
+  } else {
+    GM_addStyle(`
+      #holodex-overlay { background: rgba(20,20,20,0.95); color: #fff; border-radius: 10px; padding: 12px; font-family: sans-serif; font-size: 13px; margin-bottom: 10px; border: 1px solid #444; }
+      #holodex-overlay h3 { margin: 0; font-size: 14px; color: #6c5ce7; }
+      #holodex-overlay ul { margin: 8px 0 0 0; padding-left: 18px; max-height: 450px; overflow-y: auto; list-style-type: disc; }
+      #holodex-overlay li { margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+      #holodex-overlay a:hover { text-decoration: underline !important; color: #6c5ce7 !important; }
+      #holodex-toggle-btn.active { background: #6c5ce7 !important; color: white; }
+      #holodex-overlay select, #holodex-overlay button { background: #333; color: #fff; border: 1px solid #555; border-radius: 4px; padding: 2px 5px; cursor: pointer; }
+      #include-males-toggle, #upcoming-toggle { margin-right: 4px; }
+    `);
+  }
 
   createToggleButton();
 })();

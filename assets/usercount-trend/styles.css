@@ -1,0 +1,64 @@
+#usercount-trend-toggle.active {
+  background: #337ab7 !important;
+  border-color: #2e6da4 !important;
+  color: #fff !important;
+}
+
+.cytube-tools-usercount-trend-panel {
+  display: none;
+  padding: 10px;
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #ddd;
+  margin-bottom: 10px;
+}
+
+.cytube-tools-usercount-trend-head {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.cytube-tools-usercount-trend-line {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: normal;
+}
+
+.cytube-tools-usercount-trend-select {
+  width: 180px;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.cytube-tools-usercount-trend-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.cytube-tools-usercount-trend-stats {
+  font-size: 12px;
+  color: #cfd4db;
+  margin-bottom: 8px;
+  background: #171717;
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+  padding: 6px;
+  word-break: break-word;
+}
+
+.cytube-tools-usercount-trend-chart {
+  width: 100%;
+  height: 120px;
+  display: block;
+  background: #171717;
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+}
+
+.cytube-tools-usercount-trend-empty {
+  color: #8a8a8a;
+  font-style: italic;
+}

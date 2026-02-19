@@ -1,14 +1,17 @@
 // ==UserScript==
 // @name         Cytube Emote Global Tracker
 // @namespace    http://tampermonkey.net/
-// @version      7.12
+// @version      7.13
 // @description  Emote tracker
 // @author       You
 // @match        https://om3tcw.com/*
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/emote-global-tracker/utils.js
 // @grant        GM_download
 // @grant        GM_setValue
 // @grant        GM_getValue
 // @grant        GM_addStyle
+// @grant        GM_getResourceText
+// @resource     emoteGlobalTrackerStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/emote-global-tracker/styles.css
 // ==/UserScript==
 
 (function() {
@@ -34,10 +37,34 @@
         }
     };
 
+    const RESOURCE_NAMES = {
+        styles: 'emoteGlobalTrackerStyles'
+    };
+
+    const emoteTrackerUtils = window.CytubeEmoteGlobalTrackerUtils;
+    if (!emoteTrackerUtils) {
+        return;
+    }
+
     const perf = { operations: {} };
 
     function safeGMOperation(operation, defaultValue) {
-        try { return operation(); } catch (e) { console.error('[Cytube Logger] Storage error:', e); return defaultValue; }
+        return emoteTrackerUtils.safeGMOperation(operation, defaultValue, '[Cytube Logger]');
+    }
+
+    function safeGetResourceText(name, fallback = '') {
+        try {
+            if (typeof GM_getResourceText !== 'function') {
+                return fallback;
+            }
+            const text = GM_getResourceText(name);
+            if (typeof text === 'string' && text.trim()) {
+                return text;
+            }
+        } catch (err) {
+            // Keep script stable on resource load failures.
+        }
+        return fallback;
     }
 
     function logPerformance(operation, startTime) {
@@ -60,6 +87,8 @@
 
     const rawUserEmoteStats = safeGMOperation(() => GM_getValue('userEmoteStats', '{}'), '{}');
     const rawDisplayLimits = safeGMOperation(() => GM_getValue('displayLimits', null), null);
+    const initialDisplayLimits = emoteTrackerUtils.parseDisplayLimits(rawDisplayLimits, CONFIG.DEFAULT_DISPLAY_LIMITS);
+    const EMOTE_PLACEHOLDER_SRC = emoteTrackerUtils.EMOTE_PLACEHOLDER_SRC;
 
     let state = {
         messages: safeGMOperation(() => JSON.parse(GM_getValue('chatMessages', '[]')), []),
@@ -82,7 +111,7 @@
         lastSavedUserStats: '',
         currentStatsTab: 'global',
         searchTerm: '',
-        displayLimits: rawDisplayLimits ? JSON.parse(rawDisplayLimits) : CONFIG.DEFAULT_DISPLAY_LIMITS
+        displayLimits: initialDisplayLimits
     };
 
     const domCache = {
@@ -92,38 +121,8 @@
     };
 
     function getUKTimestamp() {
-        const now = new Date();
-        const options = { timeZone: 'Europe/London', hour12: false };
-        const time = now.toLocaleTimeString('en-GB', options).split(':');
-        return `[${time[0].padStart(2, '0')}:${time[1]}:${time[2].split(' ')[0].padStart(2, '0')}]`;
+        return emoteTrackerUtils.getUKTimestamp();
     }
-
-    const STATS_STYLES = `
-        #cytube-logger-menu { background:#252525; padding:10px; border-radius:8px; margin-bottom:15px; display:none; }
-        #cytube-logger-menu button { margin:0 5px 5px 0; }
-        #cytube-chat-preview, #cytube-stats-preview, #cytube-logger-settings {
-            background:#1a1a1a; border:1px solid #333; border-radius:8px; margin-bottom:15px;
-            display:none; flex-direction:column; color:#ddd; font-family:Arial,sans-serif;
-            width:100%; min-height:240px; box-sizing:border-box; overflow:hidden;
-        }
-        .logger-header { padding:12px; background:#252525; border-bottom:1px solid #383838; display:flex; justify-content:space-between; align-items:center; }
-        .logger-close { cursor:pointer; font-size:18px; background:transparent; border:0; color:inherit; line-height:1; padding:0; }
-        .logger-content { flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px; }
-        .stats-tabs { display:flex; background:#2a2a2a; border-bottom:1px solid #383838; }
-        .stats-tab { flex:1; padding:10px; text-align:center; cursor:pointer; border-bottom:2px solid transparent; }
-        .stats-tab.active { border-bottom-color:#9C27B0; background:#333; color:#fff; }
-        .stats-search { padding:8px 12px; background:#252525; border-bottom:1px solid #383838; }
-        .stats-search input { width:100%; padding:6px; background:#2a2a2a; border:1px solid #383838; border-radius:4px; color:#ddd; }
-        .cytube-stats-emote-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; padding:6px; background:#2a2a2a; border-radius:4px; }
-        .cytube-stats-emote-img { width:50px; height:50px; object-fit:contain; flex-shrink:0; }
-        .user-stats-row { margin-bottom:12px; padding:8px; background:#2a2a2a; border-radius:4px; }
-        .user-stats-header { font-weight:bold; margin-bottom:6px; }
-        .user-top-emotes { display:flex; flex-wrap:wrap; gap:8px; }
-        .user-emote-item { display:flex; align-items:center; gap:4px; font-size:13px; }
-        .user-emote-img { width:32px; height:32px; }
-        .no-stats-message { color:#888; font-style:italic; text-align:center; padding:20px; }
-        #cytube-logger-toggle.active { background:#6c5ce7 !important; color:white !important; }
-    `;
 
     function openToolsTab() {
         if (typeof $ !== 'undefined') {
@@ -430,7 +429,7 @@
             return;
         }
         emotes.forEach(([name, data]) => {
-            const src = data.src || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjNjY2NjY2Ij48cGF0aCBkPSJNMCAwaDI0djI0SDBWMHoiIGZpbGw9Im5vbmUiLz48cGF0aCBkPSJNMTkgM0g1Yy0xLjEgMC0yIC45LTIgMnYxNGMwIDEuMS45IDIgMiAyaDE0YzEuMSAwIDItLjkgMi0yVjVjMC0xLjEtLjktMi0yLTJ6bS0uMjkgMTUuNDdsLTUuODMtNS44M0w5Ljg4IDE2Ljc2IDYuNyAxMy41OCA1LjI5IDE1bDQuNTkgNC41OSA4LjQ3LTguNDcgMS40MiAxLjQxTDE4LjcxIDE4LjQ3eiIvPjwvc3ZnPg==';
+            const src = data.src || EMOTE_PLACEHOLDER_SRC;
             const row = document.createElement('div');
             row.className = 'cytube-stats-emote-row';
             row.innerHTML = `<img class="cytube-stats-emote-img" src="${src}" alt="${name}">
@@ -461,7 +460,7 @@
             row.innerHTML = `<div class="user-stats-header"><span class="user-stats-username">${username}</span> <span class="user-stats-total">(${total} total)</span></div>
                 <div class="user-top-emotes">
                     ${top.map(([n, d]) => {
-                        const src = d.src || 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjNjY2NjY2Ij48cGF0aCBkPSJNMCAwaDI0djI0SDBWMHoiIGZpbGw9Im5vbmUiLz48cGF0aCBkPSJNMTkgM0g1Yy0xLjEgMC0yIC45LTIgMnYxNGMwIDEuMS45IDIgMiAyaDE0YzEuMSAwIDItLjkgMi0yVjVjMC0xLjEtLjktMi0yLTJ6bS0uMjkgMTUuNDdsLTUuODMtNS44M0w5Ljg4IDE2Ljc2IDYuNyAxMy41OCA1LjI5IDE1bDQuNTkgNC41OSA4LjQ3LTguNDcgMS40MiAxLjQxTDE4LjcxIDE4LjQ3eiIvPjwvc3ZnPg==';
+                        const src = d.src || EMOTE_PLACEHOLDER_SRC;
                         return `<div class="user-emote-item"><img class="user-emote-img" src="${src}" alt="${n}"><span class="user-emote-name">${n}</span> <span class="user-emote-count">${d.count}</span></div>`;
                     }).join('')}
                 </div>`;
@@ -476,12 +475,12 @@
     }
 
     function saveSettings() {
-        state.displayLimits = {
-            globalStats: parseInt(document.getElementById('global-stats-limit').value) || CONFIG.DEFAULT_DISPLAY_LIMITS.globalStats,
-            userStats: parseInt(document.getElementById('user-stats-limit').value) || CONFIG.DEFAULT_DISPLAY_LIMITS.userStats,
-            topEmotesPerUser: parseInt(document.getElementById('top-emotes-limit').value) || CONFIG.DEFAULT_DISPLAY_LIMITS.topEmotesPerUser,
-            previewMessages: parseInt(document.getElementById('preview-messages-limit').value) || CONFIG.DEFAULT_DISPLAY_LIMITS.previewMessages
-        };
+        state.displayLimits = emoteTrackerUtils.sanitizeDisplayLimits({
+            globalStats: document.getElementById('global-stats-limit').value,
+            userStats: document.getElementById('user-stats-limit').value,
+            topEmotesPerUser: document.getElementById('top-emotes-limit').value,
+            previewMessages: document.getElementById('preview-messages-limit').value
+        }, CONFIG.DEFAULT_DISPLAY_LIMITS);
         safeGMOperation(() => GM_setValue('displayLimits', JSON.stringify(state.displayLimits)));
         if (state.isPreviewVisible) updatePreview();
         if (state.isStatsVisible) updateStatsPreview();
@@ -505,10 +504,7 @@
     }
 
     function getFormattedDate(date) {
-        const d = String(date.getDate()).padStart(2, '0');
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const y = date.getFullYear();
-        return `${d}_${m}_${y}`;
+        return emoteTrackerUtils.getFormattedDate(date);
     }
 
     function exportEmoteStats() {
@@ -538,7 +534,10 @@
     }
 
     function createUI() {
-        GM_addStyle(STATS_STYLES);
+        const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+        if (resourceCss) {
+            GM_addStyle(resourceCss);
+        }
         const check = setInterval(() => {
             const btnContainer = document.getElementById('tools-button-container');
             const contentArea = document.getElementById('tools-content-area');

@@ -1,0 +1,100 @@
+#alerts-toggle.active {
+  background: #337ab7 !important;
+  border-color: #2e6da4 !important;
+  color: #fff !important;
+}
+
+.cytube-tools-alerts-panel {
+  display: none;
+  padding: 10px;
+  background: #1f1f1f;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #ddd;
+  margin-bottom: 10px;
+}
+
+.cytube-tools-alerts-head {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.cytube-tools-alerts-subhead {
+  margin: 10px 0 6px;
+  font-size: 13px;
+}
+
+.cytube-tools-alerts-line {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: normal;
+}
+
+.cytube-tools-alerts-block {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: normal;
+}
+
+.cytube-tools-alerts-number {
+  width: 120px;
+  display: inline-block;
+  margin-left: 8px;
+}
+
+.cytube-tools-alerts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.cytube-tools-alerts-history {
+  max-height: 260px;
+  overflow-y: auto;
+  background: #171717;
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+  padding: 6px;
+}
+
+.cytube-tools-alerts-history-row {
+  border-bottom: 1px solid #2d2d2d;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.cytube-tools-alerts-history-row:last-child {
+  border-bottom: none;
+}
+
+.cytube-tools-alerts-history-time {
+  color: #9aa0a6;
+  margin-right: 8px;
+}
+
+.cytube-tools-alerts-history-summary {
+  color: #e8eaed;
+}
+
+.cytube-tools-alerts-history-body {
+  color: #c3c7cd;
+  margin-top: 2px;
+  word-break: break-word;
+}
+
+.cytube-tools-alerts-empty {
+  color: #8a8a8a;
+  font-style: italic;
+}
+
+.cytube-tools-alerts-inline {
+  margin-left: 6px;
+  color: #ffd166;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.cytube-tools-alerts-row-hit {
+  box-shadow: inset 2px 0 0 #ffd166;
+}

@@ -1,0 +1,35 @@
+<div class="cytube-tools-usercount-trend-head"><strong>Usercount Trend Tracker</strong></div>
+<label class="cytube-tools-usercount-trend-line">
+  <input type="checkbox" id="cytube-tools-usercount-trend-enabled">
+  Enable tracking
+</label>
+<label class="cytube-tools-usercount-trend-line">
+  Sample interval
+  <select id="cytube-tools-usercount-trend-interval" class="form-control cytube-tools-usercount-trend-select">
+    <option value="5000">5 seconds</option>
+    <option value="10000">10 seconds</option>
+    <option value="30000">30 seconds</option>
+    <option value="60000">60 seconds</option>
+  </select>
+</label>
+<label class="cytube-tools-usercount-trend-line">
+  Window
+  <select id="cytube-tools-usercount-trend-window" class="form-control cytube-tools-usercount-trend-select">
+    <option value="5">5 minutes</option>
+    <option value="15">15 minutes</option>
+    <option value="30">30 minutes</option>
+    <option value="60">60 minutes</option>
+    <option value="120">120 minutes</option>
+  </select>
+</label>
+<label class="cytube-tools-usercount-trend-line">
+  <input type="checkbox" id="cytube-tools-usercount-trend-paused">
+  Pause sampling
+</label>
+<div class="cytube-tools-usercount-trend-actions">
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-usercount-trend-sample-now">Sample Now</button>
+  <button type="button" class="btn btn-sm btn-danger" id="cytube-tools-usercount-trend-clear">Clear</button>
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-usercount-trend-export">Export JSON</button>
+</div>
+<div id="cytube-tools-usercount-trend-stats" class="cytube-tools-usercount-trend-stats"></div>
+<canvas id="cytube-tools-usercount-trend-chart" class="cytube-tools-usercount-trend-chart"></canvas>

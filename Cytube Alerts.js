@@ -1,12 +1,16 @@
 // ==UserScript==
 // @name         Cytube Alerts
 // @namespace    cytube.alerts
-// @version      1.0
+// @version      1.1
 // @description  Keyword and mention alerts for chat
 // @match        https://om3tcw.com/r/*
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/alerts/utils.js
 // @grant        GM_addStyle
+// @grant        GM_getResourceText
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @resource     alertsPanelHtml https://conzz97.github.io/bote-violentmonkey-scripts/assets/alerts/panel.html
+// @resource     alertsStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/alerts/styles.css
 // ==/UserScript==
 
 (function() {
@@ -56,6 +60,23 @@
     history: 'cytube-tools-alerts-history'
   };
 
+  const RESOURCE_NAMES = {
+    panelHtml: 'alertsPanelHtml',
+    styles: 'alertsStyles'
+  };
+
+  const FALLBACK_PANEL_HTML = `
+    <div class="cytube-tools-alerts-head"><strong>Alerts</strong></div>
+    <div class="cytube-tools-alerts-empty">
+      Resource load failed. Check script @resource URLs for panel.html/styles.css.
+    </div>
+  `;
+
+  const alertsUtils = window.CytubeAlertsUtils;
+  if (!alertsUtils) {
+    return;
+  }
+
   const state = {
     settings: loadSettings(),
     panelVisible: false,
@@ -86,37 +107,23 @@
     }
   }
 
-  function parseStringArray(value, fallback) {
-    if (Array.isArray(value)) {
-      return dedupeList(value);
-    }
-    if (typeof value === 'string') {
-      try {
-        const parsed = JSON.parse(value);
-        return Array.isArray(parsed) ? dedupeList(parsed) : fallback;
-      } catch (err) {
+  function safeGetResourceText(name, fallback = '') {
+    try {
+      if (typeof GM_getResourceText !== 'function') {
         return fallback;
       }
+      const text = GM_getResourceText(name);
+      if (typeof text === 'string' && text.trim()) {
+        return text;
+      }
+    } catch (err) {
+      // Keep script stable on resource load failures.
     }
     return fallback;
   }
 
-  function dedupeList(values) {
-    const unique = [];
-    const seen = new Set();
-    values.forEach((value) => {
-      const text = String(value || '').trim();
-      if (!text) {
-        return;
-      }
-      const key = text.toLowerCase();
-      if (seen.has(key)) {
-        return;
-      }
-      seen.add(key);
-      unique.push(text);
-    });
-    return unique;
+  function parseStringArray(value, fallback) {
+    return alertsUtils.parseStringArray(value, fallback);
   }
 
   function loadSettings() {
@@ -191,7 +198,7 @@
   }
 
   function parseListInput(raw) {
-    return dedupeList(String(raw || '').split(/[\n,]/g).map((value) => value.trim()));
+    return alertsUtils.parseListInput(raw);
   }
 
   function updateDesktopPermissionStatus() {
@@ -355,7 +362,7 @@
   }
 
   function escapeRegExp(text) {
-    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return alertsUtils.escapeRegExp(text);
   }
 
   function findMatches(text) {
@@ -597,138 +604,27 @@
     if (!state.ui.panel) {
       return;
     }
-    state.ui.panel.innerHTML = `
-      <div class="cytube-tools-alerts-head">
-        <strong>Alerts</strong>
-      </div>
-      <label class="cytube-tools-alerts-line">
-        <input type="checkbox" id="${UI_IDS.enabled}">
-        Enable alerts
-      </label>
-      <label class="cytube-tools-alerts-block">
-        Keywords (whole words/phrases, comma or newline separated)
-        <textarea id="${UI_IDS.keywords}" rows="4" class="form-control"></textarea>
-      </label>
-      <label class="cytube-tools-alerts-block">
-        Mentions (exact names, comma or newline separated)
-        <textarea id="${UI_IDS.mentions}" rows="3" class="form-control"></textarea>
-      </label>
-      <label class="cytube-tools-alerts-line">
-        Cooldown (seconds)
-        <input type="number" id="${UI_IDS.cooldown}" min="1" class="form-control cytube-tools-alerts-number">
-      </label>
-      <label class="cytube-tools-alerts-line">
-        <input type="checkbox" id="${UI_IDS.sound}">
-        Sound alert
-      </label>
-      <label class="cytube-tools-alerts-line">
-        <input type="checkbox" id="${UI_IDS.desktop}">
-        Desktop notification
-      </label>
-      <label class="cytube-tools-alerts-line">
-        <input type="checkbox" id="${UI_IDS.inline}">
-        Inline marker in chat
-      </label>
-      <button type="button" class="btn btn-sm btn-default" id="${UI_IDS.desktopPermission}">Desktop permission: unknown</button>
-      <div class="cytube-tools-alerts-actions">
-        <button type="button" class="btn btn-sm btn-primary" id="${UI_IDS.save}">Save Settings</button>
-        <button type="button" class="btn btn-sm btn-default" id="${UI_IDS.test}">Test Alert</button>
-        <button type="button" class="btn btn-sm btn-danger" id="${UI_IDS.clearHistory}">Clear History</button>
-      </div>
-      <div class="cytube-tools-alerts-subhead"><strong>Recent Alerts</strong></div>
-      <div id="${UI_IDS.history}" class="cytube-tools-alerts-history"></div>
-    `;
+    state.ui.panel.innerHTML = safeGetResourceText(RESOURCE_NAMES.panelHtml, FALLBACK_PANEL_HTML);
     fillFormFromSettings();
     bindUiEvents();
     renderHistory();
   }
 
-  GM_addStyle(`
-    #${TOGGLE_ID}.active {
-      background: #337ab7 !important;
-      border-color: #2e6da4 !important;
-      color: #fff !important;
-    }
-    .${PANEL_CLASS} {
-      display: none;
-      padding: 10px;
-      background: #1f1f1f;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #ddd;
-      margin-bottom: 10px;
-    }
-    .cytube-tools-alerts-head {
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .cytube-tools-alerts-subhead {
-      margin: 10px 0 6px;
-      font-size: 13px;
-    }
-    .cytube-tools-alerts-line {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: normal;
-    }
-    .cytube-tools-alerts-block {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: normal;
-    }
-    .cytube-tools-alerts-number {
-      width: 120px;
-      display: inline-block;
-      margin-left: 8px;
-    }
-    .cytube-tools-alerts-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 8px;
-    }
-    .cytube-tools-alerts-history {
-      max-height: 260px;
-      overflow-y: auto;
-      background: #171717;
-      border: 1px solid #2d2d2d;
-      border-radius: 4px;
-      padding: 6px;
-    }
-    .cytube-tools-alerts-history-row {
-      border-bottom: 1px solid #2d2d2d;
-      padding: 4px 0;
-      font-size: 12px;
-    }
-    .cytube-tools-alerts-history-row:last-child {
-      border-bottom: none;
-    }
-    .cytube-tools-alerts-history-time {
-      color: #9aa0a6;
-      margin-right: 8px;
-    }
-    .cytube-tools-alerts-history-summary {
-      color: #e8eaed;
-    }
-    .cytube-tools-alerts-history-body {
-      color: #c3c7cd;
-      margin-top: 2px;
-      word-break: break-word;
-    }
-    .cytube-tools-alerts-empty {
-      color: #8a8a8a;
-      font-style: italic;
-    }
-    .cytube-tools-alerts-inline {
-      margin-left: 6px;
-      color: #ffd166;
-      font-size: 11px;
-      font-weight: 700;
-    }
-    .cytube-tools-alerts-row-hit {
-      box-shadow: inset 2px 0 0 #ffd166;
-    }
-  `);
+  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+  if (resourceCss) {
+    GM_addStyle(resourceCss);
+  } else {
+    GM_addStyle(`
+      #${TOGGLE_ID}.active {
+        background: #337ab7 !important;
+        border-color: #2e6da4 !important;
+        color: #fff !important;
+      }
+      .${PANEL_CLASS} {
+        display: none;
+      }
+    `);
+  }
 
   (async () => {
     const toolsUi = await ensureToolsUi();

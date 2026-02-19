@@ -1,12 +1,16 @@
 // ==UserScript==
 // @name         Cytube Usercount Trend Tracker
 // @namespace    cytube.usercount.trend
-// @version      1.0
+// @version      1.1
 // @description  Track connected user trends and visualize session occupancy
 // @match        https://om3tcw.com/r/*
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/usercount-trend/utils.js
 // @grant        GM_addStyle
+// @grant        GM_getResourceText
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @resource     usercountTrendPanelHtml https://conzz97.github.io/bote-violentmonkey-scripts/assets/usercount-trend/panel.html
+// @resource     usercountTrendStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/usercount-trend/styles.css
 // ==/UserScript==
 
 (function() {
@@ -43,6 +47,23 @@
     chart: 'cytube-tools-usercount-trend-chart'
   };
 
+  const RESOURCE_NAMES = {
+    panelHtml: 'usercountTrendPanelHtml',
+    styles: 'usercountTrendStyles'
+  };
+
+  const FALLBACK_PANEL_HTML = `
+    <div class="cytube-tools-usercount-trend-head"><strong>Usercount Trend Tracker</strong></div>
+    <div class="cytube-tools-usercount-trend-empty">
+      Resource load failed. Check script @resource URLs for panel.html/styles.css.
+    </div>
+  `;
+
+  const usercountTrendUtils = window.CytubeUsercountTrendUtils;
+  if (!usercountTrendUtils) {
+    return;
+  }
+
   const state = {
     settings: loadSettings(),
     samples: loadSamples(),
@@ -73,63 +94,35 @@
     }
   }
 
-  function parseStoredObject(raw) {
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      return raw;
-    }
-    if (typeof raw === 'string') {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          return parsed;
-        }
-      } catch (err) {
-        return {};
+  function safeGetResourceText(name, fallback = '') {
+    try {
+      if (typeof GM_getResourceText !== 'function') {
+        return fallback;
       }
-    }
-    return {};
-  }
-
-  function parseStoredArray(raw) {
-    if (Array.isArray(raw)) {
-      return raw;
-    }
-    if (typeof raw === 'string') {
-      try {
-        const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed : [];
-      } catch (err) {
-        return [];
+      const text = GM_getResourceText(name);
+      if (typeof text === 'string' && text.trim()) {
+        return text;
       }
-    }
-    return [];
-  }
-
-  function parseBoolean(value, fallback) {
-    if (typeof value === 'boolean') {
-      return value;
-    }
-    if (typeof value === 'number') {
-      return value !== 0;
-    }
-    if (typeof value === 'string') {
-      const normalized = value.trim().toLowerCase();
-      if (normalized === 'true' || normalized === '1') {
-        return true;
-      }
-      if (normalized === 'false' || normalized === '0') {
-        return false;
-      }
+    } catch (err) {
+      // Keep script stable on resource load failures.
     }
     return fallback;
   }
 
+  function parseStoredObject(raw) {
+    return usercountTrendUtils.parseStoredObject(raw);
+  }
+
+  function parseStoredArray(raw) {
+    return usercountTrendUtils.parseStoredArray(raw);
+  }
+
+  function parseBoolean(value, fallback) {
+    return usercountTrendUtils.parseBoolean(value, fallback);
+  }
+
   function clampNumber(value, min, max, fallback) {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) {
-      return fallback;
-    }
-    return Math.min(max, Math.max(min, parsed));
+    return usercountTrendUtils.clampNumber(value, min, max, fallback);
   }
 
   function loadSettings() {
@@ -218,27 +211,7 @@
   }
 
   function extractConnectedUsersFromElement(userCountEl) {
-    if (!(userCountEl instanceof HTMLElement)) {
-      return null;
-    }
-
-    const clone = userCountEl.cloneNode(true);
-    if (clone instanceof HTMLElement) {
-      clone.querySelectorAll('.profile-box').forEach((node) => node.remove());
-    }
-
-    const text = clone.textContent.replace(/\s+/g, ' ').trim();
-    if (!text) {
-      return null;
-    }
-
-    const connectedMatch = text.match(/(\d+)\s*(?:connected\s*users?|users?\s*connected)/i);
-    if (connectedMatch) {
-      return Number(connectedMatch[1]);
-    }
-
-    const firstNumberMatch = text.match(/(\d+)/);
-    return firstNumberMatch ? Number(firstNumberMatch[1]) : null;
+    return usercountTrendUtils.extractConnectedUsersFromElement(userCountEl);
   }
 
   function getConnectedUsers() {
@@ -374,40 +347,11 @@
   }
 
   function computeStats(samples) {
-    if (!samples.length) {
-      return null;
-    }
-
-    let min = samples[0].count;
-    let max = samples[0].count;
-    let sum = 0;
-    samples.forEach((sample) => {
-      if (sample.count < min) {
-        min = sample.count;
-      }
-      if (sample.count > max) {
-        max = sample.count;
-      }
-      sum += sample.count;
-    });
-
-    const current = samples[samples.length - 1].count;
-    const previous = samples.length > 1 ? samples[samples.length - 2].count : current;
-    const average = sum / samples.length;
-
-    return {
-      current,
-      min,
-      max,
-      average,
-      deltaPrev: current - previous,
-      deltaAvg: current - average
-    };
+    return usercountTrendUtils.computeStats(samples);
   }
 
   function formatSigned(value) {
-    const rounded = Math.round(value * 100) / 100;
-    return rounded >= 0 ? `+${rounded}` : `${rounded}`;
+    return usercountTrendUtils.formatSigned(value);
   }
 
   function drawChart(samples) {
@@ -635,102 +579,27 @@
       return;
     }
 
-    state.ui.panel.innerHTML = `
-      <div class="cytube-tools-usercount-trend-head"><strong>Usercount Trend Tracker</strong></div>
-      <label class="cytube-tools-usercount-trend-line">
-        <input type="checkbox" id="${UI_IDS.enabled}">
-        Enable tracking
-      </label>
-      <label class="cytube-tools-usercount-trend-line">
-        Sample interval
-        <select id="${UI_IDS.interval}" class="form-control cytube-tools-usercount-trend-select">
-          <option value="5000">5 seconds</option>
-          <option value="10000">10 seconds</option>
-          <option value="30000">30 seconds</option>
-          <option value="60000">60 seconds</option>
-        </select>
-      </label>
-      <label class="cytube-tools-usercount-trend-line">
-        Window
-        <select id="${UI_IDS.window}" class="form-control cytube-tools-usercount-trend-select">
-          <option value="5">5 minutes</option>
-          <option value="15">15 minutes</option>
-          <option value="30">30 minutes</option>
-          <option value="60">60 minutes</option>
-          <option value="120">120 minutes</option>
-        </select>
-      </label>
-      <label class="cytube-tools-usercount-trend-line">
-        <input type="checkbox" id="${UI_IDS.paused}">
-        Pause sampling
-      </label>
-      <div class="cytube-tools-usercount-trend-actions">
-        <button type="button" class="btn btn-sm btn-default" id="${UI_IDS.sampleNow}">Sample Now</button>
-        <button type="button" class="btn btn-sm btn-danger" id="${UI_IDS.clear}">Clear</button>
-        <button type="button" class="btn btn-sm btn-default" id="${UI_IDS.export}">Export JSON</button>
-      </div>
-      <div id="${UI_IDS.stats}" class="cytube-tools-usercount-trend-stats"></div>
-      <canvas id="${UI_IDS.chart}" class="cytube-tools-usercount-trend-chart"></canvas>
-    `;
+    state.ui.panel.innerHTML = safeGetResourceText(RESOURCE_NAMES.panelHtml, FALLBACK_PANEL_HTML);
 
     bindUiEvents();
     fillFormFromSettings();
   }
 
-  GM_addStyle(`
-    #${TOGGLE_ID}.active {
-      background: #337ab7 !important;
-      border-color: #2e6da4 !important;
-      color: #fff !important;
-    }
-    .${PANEL_CLASS} {
-      display: none;
-      padding: 10px;
-      background: #1f1f1f;
-      border: 1px solid #333;
-      border-radius: 6px;
-      color: #ddd;
-      margin-bottom: 10px;
-    }
-    .cytube-tools-usercount-trend-head {
-      margin-bottom: 8px;
-      font-size: 14px;
-    }
-    .cytube-tools-usercount-trend-line {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: normal;
-    }
-    .cytube-tools-usercount-trend-select {
-      width: 180px;
-      display: inline-block;
-      margin-left: 8px;
-    }
-    .cytube-tools-usercount-trend-actions {
-      display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-    .cytube-tools-usercount-trend-stats {
-      font-size: 12px;
-      color: #cfd4db;
-      margin-bottom: 8px;
-      background: #171717;
-      border: 1px solid #2d2d2d;
-      border-radius: 4px;
-      padding: 6px;
-      word-break: break-word;
-    }
-    .cytube-tools-usercount-trend-chart {
-      width: 100%;
-      height: 120px;
-      display: block;
-      background: #171717;
-      border: 1px solid #2d2d2d;
-      border-radius: 4px;
-    }
-  `);
+  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+  if (resourceCss) {
+    GM_addStyle(resourceCss);
+  } else {
+    GM_addStyle(`
+      #${TOGGLE_ID}.active {
+        background: #337ab7 !important;
+        border-color: #2e6da4 !important;
+        color: #fff !important;
+      }
+      .${PANEL_CLASS} {
+        display: none;
+      }
+    `);
+  }
 
   (async () => {
     const toolsUi = await ensureToolsUi();

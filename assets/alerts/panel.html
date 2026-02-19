@@ -1,0 +1,39 @@
+<div class="cytube-tools-alerts-head">
+  <strong>Alerts</strong>
+</div>
+<label class="cytube-tools-alerts-line">
+  <input type="checkbox" id="cytube-tools-alerts-enabled">
+  Enable alerts
+</label>
+<label class="cytube-tools-alerts-block">
+  Keywords (whole words/phrases, comma or newline separated)
+  <textarea id="cytube-tools-alerts-keywords" rows="4" class="form-control"></textarea>
+</label>
+<label class="cytube-tools-alerts-block">
+  Mentions (exact names, comma or newline separated)
+  <textarea id="cytube-tools-alerts-mentions" rows="3" class="form-control"></textarea>
+</label>
+<label class="cytube-tools-alerts-line">
+  Cooldown (seconds)
+  <input type="number" id="cytube-tools-alerts-cooldown" min="1" class="form-control cytube-tools-alerts-number">
+</label>
+<label class="cytube-tools-alerts-line">
+  <input type="checkbox" id="cytube-tools-alerts-sound">
+  Sound alert
+</label>
+<label class="cytube-tools-alerts-line">
+  <input type="checkbox" id="cytube-tools-alerts-desktop">
+  Desktop notification
+</label>
+<label class="cytube-tools-alerts-line">
+  <input type="checkbox" id="cytube-tools-alerts-inline">
+  Inline marker in chat
+</label>
+<button type="button" class="btn btn-sm btn-default" id="cytube-tools-alerts-desktop-permission">Desktop permission: unknown</button>
+<div class="cytube-tools-alerts-actions">
+  <button type="button" class="btn btn-sm btn-primary" id="cytube-tools-alerts-save">Save Settings</button>
+  <button type="button" class="btn btn-sm btn-default" id="cytube-tools-alerts-test">Test Alert</button>
+  <button type="button" class="btn btn-sm btn-danger" id="cytube-tools-alerts-clear">Clear History</button>
+</div>
+<div class="cytube-tools-alerts-subhead"><strong>Recent Alerts</strong></div>
+<div id="cytube-tools-alerts-history" class="cytube-tools-alerts-history"></div>
