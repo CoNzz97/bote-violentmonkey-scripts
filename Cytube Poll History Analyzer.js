@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cytube Poll History Analyzer
 // @namespace    cytube.poll.history.analyzer
-// @version      1.9
+// @version      2.0
 // @description  Parse poll history, group name aliases, and track soft winners
 // @match        https://om3tcw.com/r/*
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/storage-utils.js
@@ -10,6 +10,7 @@
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/record-model.js
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/poll-parser.js
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/tracking-engine.js
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/winner-database.js
 // @grant        GM_addStyle
 // @grant        GM_getResourceText
 // @grant        GM_getValue
@@ -96,8 +97,9 @@
   const recordModelFactory = window.CytubePollHistoryAnalyzerRecordModel;
   const pollParserFactory = window.CytubePollHistoryAnalyzerPollParser;
   const trackingEngineFactory = window.CytubePollHistoryAnalyzerTrackingEngine;
+  const winnerDatabaseFactory = window.CytubePollHistoryAnalyzerWinnerDatabase;
 
-  if (!storageUtils || !textUtils || !aliasEngineFactory || !recordModelFactory || !pollParserFactory || !trackingEngineFactory) {
+  if (!storageUtils || !textUtils || !aliasEngineFactory || !recordModelFactory || !pollParserFactory || !trackingEngineFactory || !winnerDatabaseFactory) {
     return;
   }
 
@@ -172,6 +174,15 @@
     parsePollNode,
     parseActivePollSnapshot
   } = pollParser;
+
+  const winnerDatabaseEngine = winnerDatabaseFactory.create({
+    normalizeText,
+    getWinnerRaw: (record) => recordModel.getWinnerRaw(record),
+    resolveWinnerGroupForDatabase: (rawWinner) => resolveWinnerGroupForDatabase(rawWinner),
+    parseAliasRuleEntries: (rawText) => parseAliasRuleEntries(rawText),
+    serializeAliasRuleEntries: (entryMap) => serializeAliasRuleEntries(entryMap),
+    maxAliasRulesLength: 8000
+  });
 
   const initialSettings = loadSettings();
   runtimeSettings = initialSettings;
@@ -553,93 +564,7 @@
   }
 
   function buildWinnerDatabase(records) {
-    const groups = new Map();
-    records.forEach((record) => {
-      const winnerRaw = getWinnerRaw(record);
-      if (!winnerRaw) {
-        return;
-      }
-
-      const winnerRawKey = normalizeText(winnerRaw);
-      if (!winnerRawKey) {
-        return;
-      }
-
-      const resolved = resolveWinnerGroupForDatabase(winnerRaw);
-      const groupKey = resolved.key;
-      let group = groups.get(groupKey);
-      if (!group) {
-        group = {
-          key: groupKey,
-          label: resolved.label,
-          canonicalKey: resolved.canonicalKey,
-          known: resolved.known,
-          count: 0,
-          rawWinnerKeys: new Set(),
-          rawWinners: new Set(),
-          polls: []
-        };
-        groups.set(groupKey, group);
-      }
-
-      group.count += 1;
-      group.rawWinnerKeys.add(winnerRawKey);
-      group.rawWinners.add(winnerRaw);
-      group.polls.push({
-        id: record.id,
-        createdAt: record.createdAt,
-        title: record.title,
-        source: record.source,
-        winnerMode: record.winnerMode,
-        winnerRaw,
-        options: record.options.map((option) => option.rawLabel)
-      });
-    });
-
-    // Ensure canonical names from Advanced Rules appear even when they have no polls yet.
-    const aliasEntries = parseAliasRuleEntries(state.settings.aliasRulesText);
-    aliasEntries.forEach((aliasEntry, canonicalKey) => {
-      if (!canonicalKey) {
-        return;
-      }
-      const canonicalDisplay = String(aliasEntry.canonicalDisplay || '').replace(/\s+/g, ' ').trim();
-      if (!canonicalDisplay) {
-        return;
-      }
-      if (groups.has(canonicalKey)) {
-        const existing = groups.get(canonicalKey);
-        if (existing) {
-          existing.label = canonicalDisplay;
-          existing.canonicalKey = canonicalKey;
-          existing.known = true;
-        }
-        return;
-      }
-      groups.set(canonicalKey, {
-        key: canonicalKey,
-        label: canonicalDisplay,
-        canonicalKey,
-        known: true,
-        count: 0,
-        rawWinnerKeys: new Set(),
-        rawWinners: new Set(),
-        polls: []
-      });
-    });
-
-    return Array.from(groups.values())
-      .map((entry) => ({
-        ...entry,
-        rawWinnerKeys: Array.from(entry.rawWinnerKeys.values()).sort(),
-        rawWinners: Array.from(entry.rawWinners.values()).sort((a, b) => a.localeCompare(b)),
-        polls: entry.polls.sort((a, b) => b.createdAt - a.createdAt)
-      }))
-      .sort((a, b) => {
-        if (b.count !== a.count) {
-          return b.count - a.count;
-        }
-        return a.label.localeCompare(b.label);
-      });
+    return winnerDatabaseEngine.buildWinnerDatabase(records, state.settings.aliasRulesText);
   }
 
   function rebuildRecordsFromAliasData() {
@@ -660,83 +585,23 @@
   }
 
   function buildAliasInputValueForEntry(entry, aliasEntries) {
-    const aliasMap = new Map();
-    const entryKey = normalizeText(entry.canonicalKey || entry.label);
-    const addAlias = (value) => {
-      const aliasDisplay = String(value || '').replace(/\s+/g, ' ').trim().slice(0, 120);
-      const aliasKey = normalizeText(aliasDisplay);
-      if (!aliasKey || aliasKey === entryKey) {
-        return;
-      }
-      aliasMap.set(aliasKey, aliasDisplay);
-    };
-
-    const aliasEntry = aliasEntries.get(entryKey);
-    if (aliasEntry) {
-      aliasEntry.aliases.forEach((aliasDisplay) => addAlias(aliasDisplay));
-    }
-    return Array.from(aliasMap.values()).join(', ');
+    return winnerDatabaseEngine.buildAliasInputValueForEntry(entry, aliasEntries);
   }
 
   function saveWinnerGroupAliases(entry, nextMainName, aliasCsv) {
-    if (!entry || !Array.isArray(entry.rawWinnerKeys)) {
+    const nextState = winnerDatabaseEngine.applyWinnerGroupAliases({
+      entry,
+      nextMainName,
+      aliasCsv,
+      aliasRulesText: state.settings.aliasRulesText,
+      winnerOverrides: state.settings.winnerOverrides
+    });
+    if (!nextState) {
       return;
     }
-    const mainName = String(nextMainName || '').replace(/\s+/g, ' ').trim().slice(0, 120);
-    const targetKey = normalizeText(mainName);
-    if (!targetKey) {
-      return;
-    }
 
-    const aliasEntries = parseAliasRuleEntries(state.settings.aliasRulesText);
-    let targetEntry = aliasEntries.get(targetKey);
-    if (!targetEntry) {
-      targetEntry = { key: targetKey, canonicalDisplay: mainName, aliases: new Map() };
-      aliasEntries.set(targetKey, targetEntry);
-    } else {
-      targetEntry.canonicalDisplay = mainName;
-    }
-
-    const aliasCandidates = new Map();
-    const addCandidate = (value) => {
-      const aliasDisplay = String(value || '').replace(/\s+/g, ' ').trim().slice(0, 120);
-      const aliasKey = normalizeText(aliasDisplay);
-      if (!aliasKey) {
-        return;
-      }
-      aliasCandidates.set(aliasKey, aliasDisplay);
-    };
-    addCandidate(mainName);
-    String(aliasCsv || '')
-      .split(',')
-      .map((part) => part.replace(/\s+/g, ' ').trim())
-      .filter(Boolean)
-      .forEach((aliasRaw) => addCandidate(aliasRaw));
-
-    aliasEntries.forEach((aliasEntry) => {
-      aliasCandidates.forEach((_, aliasKey) => {
-        aliasEntry.aliases.delete(aliasKey);
-      });
-    });
-    aliasCandidates.forEach((aliasDisplay, aliasKey) => {
-      if (aliasKey === targetKey) {
-        return;
-      }
-      targetEntry.aliases.set(aliasKey, aliasDisplay);
-    });
-
-    if (!state.settings.winnerOverrides || typeof state.settings.winnerOverrides !== 'object') {
-      state.settings.winnerOverrides = {};
-    }
-    entry.rawWinnerKeys.forEach((rawKey) => {
-      const key = normalizeText(rawKey);
-      if (!key) {
-        return;
-      }
-      state.settings.winnerOverrides[key] = mainName;
-    });
-
-    state.settings.aliasRulesText = serializeAliasRuleEntries(aliasEntries).slice(0, 8000);
+    state.settings.aliasRulesText = nextState.aliasRulesText;
+    state.settings.winnerOverrides = nextState.winnerOverrides;
     runtimeAliasData = parseAliasRules(state.settings.aliasRulesText);
     persistSettings();
     rebuildRecordsFromAliasData();
@@ -745,37 +610,17 @@
   }
 
   function resetWinnerGroupAliases(entry) {
-    if (!entry || !Array.isArray(entry.rawWinnerKeys)) {
+    const nextState = winnerDatabaseEngine.resetWinnerGroupAliasesData({
+      entry,
+      aliasRulesText: state.settings.aliasRulesText,
+      winnerOverrides: state.settings.winnerOverrides
+    });
+    if (!nextState) {
       return;
     }
-    if (!state.settings.winnerOverrides || typeof state.settings.winnerOverrides !== 'object') {
-      state.settings.winnerOverrides = {};
-    }
 
-    const rawKeySet = new Set(
-      entry.rawWinnerKeys
-        .map((rawKey) => normalizeText(rawKey))
-        .filter(Boolean)
-    );
-    rawKeySet.forEach((key) => {
-      delete state.settings.winnerOverrides[key];
-    });
-
-    const aliasEntries = parseAliasRuleEntries(state.settings.aliasRulesText);
-    Array.from(aliasEntries.keys()).forEach((canonicalKey) => {
-      const aliasEntry = aliasEntries.get(canonicalKey);
-      if (!aliasEntry) {
-        return;
-      }
-      rawKeySet.forEach((rawKey) => {
-        aliasEntry.aliases.delete(rawKey);
-      });
-      if (rawKeySet.has(canonicalKey) && aliasEntry.aliases.size === 0) {
-        aliasEntries.delete(canonicalKey);
-      }
-    });
-
-    state.settings.aliasRulesText = serializeAliasRuleEntries(aliasEntries).slice(0, 8000);
+    state.settings.aliasRulesText = nextState.aliasRulesText;
+    state.settings.winnerOverrides = nextState.winnerOverrides;
     runtimeAliasData = parseAliasRules(state.settings.aliasRulesText);
     persistSettings();
     rebuildRecordsFromAliasData();

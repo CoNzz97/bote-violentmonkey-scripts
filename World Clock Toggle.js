@@ -1,11 +1,15 @@
 // ==UserScript==
 // @name         World Clock Toggle
 // @namespace    world.clock
-// @version      2.6
+// @version      2.7
 // @description  Adds clocks to nav bar
 // @match        https://om3tcw.com/r/*
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/world-clock-toggle/utils.js
+// @grant        GM_addStyle
+// @grant        GM_getResourceText
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @resource     worldClockToggleStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/world-clock-toggle/styles.css
 // ==/UserScript==
 
 (function() {
@@ -17,6 +21,9 @@
   const RETRY_DELAY_MS = 250;
   const MAX_RETRIES = 200;
   const CLOCK_UPDATE_MS = 30000;
+  const RESOURCE_NAMES = {
+    styles: 'worldClockToggleStyles'
+  };
 
   const TIMEZONES = {
     UK: 'Europe/London',
@@ -25,38 +32,32 @@
   };
   const timeFormatters = {};
 
+  const worldClockUtils = window.CytubeWorldClockToggleUtils;
+  if (!worldClockUtils) {
+    return;
+  }
+
   const state = {
     button: null,
     clockLi: null,
     clockAnchor: null,
-    isVisible: GM_getValue(STORAGE_KEY, false),
+    isVisible: worldClockUtils.parseBoolean(GM_getValue(STORAGE_KEY, false), false),
     updateInterval: null
   };
 
-  function injectStyles() {
-    if (document.getElementById('world-clock-style')) {
-      return;
+  function safeGetResourceText(name, fallback = '') {
+    try {
+      if (typeof GM_getResourceText !== 'function') {
+        return fallback;
+      }
+      const text = GM_getResourceText(name);
+      if (typeof text === 'string' && text.trim()) {
+        return text;
+      }
+    } catch (err) {
+      // Keep script stable on resource load failures.
     }
-
-    const style = document.createElement('style');
-    style.id = 'world-clock-style';
-    style.textContent = `
-      #${TOGGLE_ID}.active {
-        background: #6c5ce7 !important;
-        color: #fff !important;
-      }
-      #${TOGGLE_ID}:hover {
-        background: #5a4dcc !important;
-        color: #fff !important;
-      }
-      #${CLOCK_ITEM_ID} {
-        display: none;
-      }
-      #${CLOCK_ITEM_ID} a {
-        white-space: nowrap;
-      }
-    `;
-    document.head.appendChild(style);
+    return fallback;
   }
 
   function formatTimeInZone(timeZone) {
@@ -206,6 +207,26 @@
     setTimeout(() => waitForUi(attempt + 1), RETRY_DELAY_MS);
   }
 
-  injectStyles();
+  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+  if (resourceCss) {
+    GM_addStyle(resourceCss);
+  } else {
+    GM_addStyle(`
+      #${TOGGLE_ID}.active {
+        background: #6c5ce7 !important;
+        color: #fff !important;
+      }
+      #${TOGGLE_ID}:hover {
+        background: #5a4dcc !important;
+        color: #fff !important;
+      }
+      #${CLOCK_ITEM_ID} {
+        display: none;
+      }
+      #${CLOCK_ITEM_ID} a {
+        white-space: nowrap;
+      }
+    `);
+  }
   waitForUi();
 })();

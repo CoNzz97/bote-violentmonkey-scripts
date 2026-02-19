@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Cytube Emote Global Tracker
 // @namespace    http://tampermonkey.net/
-// @version      7.13
+// @version      7.14
 // @description  Emote tracker
 // @author       You
 // @match        https://om3tcw.com/*
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/emote-global-tracker/utils.js
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/emote-global-tracker/ui-templates.js
 // @grant        GM_download
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -36,13 +37,16 @@
             previewMessages: 250
         }
     };
+    const RETRY_DELAY_MS = 500;
+    const MAX_RETRIES = 120;
 
     const RESOURCE_NAMES = {
         styles: 'emoteGlobalTrackerStyles'
     };
 
     const emoteTrackerUtils = window.CytubeEmoteGlobalTrackerUtils;
-    if (!emoteTrackerUtils) {
+    const emoteTrackerTemplates = window.CytubeEmoteGlobalTrackerUiTemplates;
+    if (!emoteTrackerUtils || !emoteTrackerTemplates) {
         return;
     }
 
@@ -65,6 +69,18 @@
             // Keep script stable on resource load failures.
         }
         return fallback;
+    }
+
+    function waitForEl(selector, attempt = 0) {
+        const node = document.querySelector(selector);
+        if (node) {
+            return Promise.resolve(node);
+        }
+        if (attempt >= MAX_RETRIES) {
+            return Promise.resolve(null);
+        }
+        return new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
+            .then(() => waitForEl(selector, attempt + 1));
     }
 
     function logPerformance(operation, startTime) {
@@ -202,13 +218,7 @@
         if (state.previewWindow) return;
         state.previewWindow = document.createElement('div');
         state.previewWindow.id = 'cytube-chat-preview';
-        state.previewWindow.innerHTML = `
-            <div class="logger-header">
-                <span>Chat Log Preview</span>
-                <button type="button" class="logger-close" data-logger-close="preview">×</button>
-            </div>
-            <div class="logger-content" id="cytube-chat-preview-content"></div>
-        `;
+        state.previewWindow.innerHTML = emoteTrackerTemplates.getPreviewWindowHtml();
         document.getElementById('tools-content-area').appendChild(state.previewWindow);
         domCache.previewContent = document.getElementById('cytube-chat-preview-content');
         applyPanelLayouts();
@@ -221,18 +231,7 @@
         if (state.statsWindow) return;
         state.statsWindow = document.createElement('div');
         state.statsWindow.id = 'cytube-stats-preview';
-        state.statsWindow.innerHTML = `
-            <div class="logger-header">
-                <span>Emote Statistics</span>
-                <button type="button" class="logger-close" data-logger-close="stats">×</button>
-            </div>
-            <div class="stats-tabs">
-                <div class="stats-tab active" data-tab="global">Global</div>
-                <div class="stats-tab" data-tab="user">Per User</div>
-            </div>
-            <div class="stats-search"><input type="text" placeholder="Search emotes/users..." id="stats-search-input"></div>
-            <div class="logger-content" id="cytube-stats-preview-content"></div>
-        `;
+        state.statsWindow.innerHTML = emoteTrackerTemplates.getStatsWindowHtml();
         document.getElementById('tools-content-area').appendChild(state.statsWindow);
         domCache.statsContent = document.getElementById('cytube-stats-preview-content');
         applyPanelLayouts();
@@ -261,20 +260,7 @@
         if (state.settingsWindow) return;
         state.settingsWindow = document.createElement('div');
         state.settingsWindow.id = 'cytube-logger-settings';
-        state.settingsWindow.innerHTML = `
-            <div class="logger-header">
-                <span>Logger Settings</span>
-                <button type="button" class="logger-close" data-logger-close="settings">×</button>
-            </div>
-            <div class="logger-content">
-                <div style="margin-bottom:10px;"><strong>Display Limits</strong></div>
-                <label>Global stats shown: <input id="global-stats-limit" type="number" value="${state.displayLimits.globalStats}" style="width:80px;"></label><br>
-                <label>User stats shown: <input id="user-stats-limit" type="number" value="${state.displayLimits.userStats}" style="width:80px;"></label><br>
-                <label>Top emotes per user: <input id="top-emotes-limit" type="number" value="${state.displayLimits.topEmotesPerUser}" style="width:80px;"></label><br>
-                <label>Preview messages: <input id="preview-messages-limit" type="number" value="${state.displayLimits.previewMessages}" style="width:80px;"></label><br><br>
-                <button class="btn btn-sm btn-primary" id="logger-save-settings">Save Settings</button>
-            </div>
-        `;
+        state.settingsWindow.innerHTML = emoteTrackerTemplates.getSettingsWindowHtml(state.displayLimits);
         document.getElementById('tools-content-area').appendChild(state.settingsWindow);
         document.getElementById('logger-save-settings').addEventListener('click', saveSettings);
         applyPanelLayouts();
@@ -533,53 +519,48 @@
         });
     }
 
-    function createUI() {
+    async function createUI() {
         const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
         if (resourceCss) {
             GM_addStyle(resourceCss);
         }
-        const check = setInterval(() => {
-            const btnContainer = document.getElementById('tools-button-container');
-            const contentArea = document.getElementById('tools-content-area');
-            if (!btnContainer || !contentArea) return;
-            clearInterval(check);
-            if (document.getElementById('cytube-logger-toggle')) return;
+        const btnContainer = await waitForEl('#tools-button-container');
+        const contentArea = await waitForEl('#tools-content-area');
+        if (!btnContainer || !contentArea) {
+            return;
+        }
+        if (document.getElementById('cytube-logger-toggle')) {
+            return;
+        }
 
-            const toggle = document.createElement('button');
-            toggle.id = 'cytube-logger-toggle';
-            toggle.className = 'btn btn-sm btn-default';
-            toggle.textContent = '📊 Emote Tracker';
-            toggle.title = 'Toggle Emote Tracker Menu';
-            toggle.addEventListener('click', toggleMenu);
-            btnContainer.appendChild(toggle);
+        const toggle = document.createElement('button');
+        toggle.id = 'cytube-logger-toggle';
+        toggle.className = 'btn btn-sm btn-default';
+        toggle.textContent = '📊 Emote Tracker';
+        toggle.title = 'Toggle Emote Tracker Menu';
+        toggle.addEventListener('click', toggleMenu);
+        btnContainer.appendChild(toggle);
 
-            state.menuDiv = document.createElement('div');
-            state.menuDiv.id = 'cytube-logger-menu';
-            state.menuDiv.innerHTML = `
-                <button class="btn btn-sm btn-default" id="logger-preview-btn">Preview Log</button>
-                <button class="btn btn-sm btn-default" id="logger-stats-btn">Emote Stats</button>
-                <button class="btn btn-sm btn-default" id="logger-export-btn">Export Stats</button>
-                <button class="btn btn-sm btn-default" id="logger-settings-btn">Settings</button>
-                <button class="btn btn-sm btn-danger" id="logger-clear-btn">Clear Data</button>
-            `;
-            contentArea.appendChild(state.menuDiv);
+        state.menuDiv = document.createElement('div');
+        state.menuDiv.id = 'cytube-logger-menu';
+        state.menuDiv.innerHTML = emoteTrackerTemplates.getMenuHtml();
+        contentArea.appendChild(state.menuDiv);
 
-            document.getElementById('logger-preview-btn').onclick = togglePreview;
-            document.getElementById('logger-stats-btn').onclick = toggleStats;
-            document.getElementById('logger-export-btn').onclick = exportEmoteStats;
-            document.getElementById('logger-settings-btn').onclick = toggleSettings;
-            document.getElementById('logger-clear-btn').onclick = () => {
-                if (confirm('Clear all logged data?')) {
-                    state.messages = []; state.emoteStats = {}; state.userEmoteStats = {};
-                    saveSilently();
-                    alert('Data cleared!');
-                }
-            };
-        }, 500);
+        document.getElementById('logger-preview-btn').onclick = togglePreview;
+        document.getElementById('logger-stats-btn').onclick = toggleStats;
+        document.getElementById('logger-export-btn').onclick = exportEmoteStats;
+        document.getElementById('logger-settings-btn').onclick = toggleSettings;
+        document.getElementById('logger-clear-btn').onclick = () => {
+            if (confirm('Clear all logged data?')) {
+                state.messages = []; state.emoteStats = {}; state.userEmoteStats = {};
+                saveSilently();
+                alert('Data cleared!');
+            }
+        };
     }
 
-    function initialize() {
-        createUI();
+    async function initialize() {
+        await createUI();
         domCache.chatContainer = document.querySelector(CONFIG.CHAT_CONTAINER_SELECTOR);
         if (domCache.chatContainer) {
             scanMessagesOnce();

@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Movie Mode Toggle
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Toggle Movie Mode CSS + Exit button in video header
 // @author       You
 // @match        https://om3tcw.com/r/*
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/movie-mode-toggle/utils.js
 // @grant        GM_addStyle
+// @grant        GM_getResourceText
+// @resource     movieModeToggleStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/movie-mode-toggle/styles.css
 // ==/UserScript==
 
 (function() {
@@ -17,6 +20,9 @@
   const RETRY_DELAY_MS = 500;
   const MAX_RETRIES = 120;
   const OBSERVER_FLAG = 'data-cytube-movie-mode-observer';
+  const RESOURCE_NAMES = {
+    styles: 'movieModeToggleStyles'
+  };
 
   const movieModeCSS = `
     #MainTabContainer { display: none !important; }
@@ -26,24 +32,36 @@
     * { scrollbar-width: none !important; }
   `;
 
+  const movieModeUtils = window.CytubeMovieModeToggleUtils;
+  if (!movieModeUtils) {
+    return;
+  }
+
   let movieModeActive = readStoredState();
   let movieModeStyleElement = null;
   let uiSyncTimer = null;
 
   function readStoredState() {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === 'true';
-    } catch (err) {
-      return false;
-    }
+    return movieModeUtils.readStoredBoolean(localStorage, STORAGE_KEY, false);
   }
 
   function saveStoredState() {
+    movieModeUtils.saveStoredBoolean(localStorage, STORAGE_KEY, movieModeActive);
+  }
+
+  function safeGetResourceText(name, fallback = '') {
     try {
-      localStorage.setItem(STORAGE_KEY, String(movieModeActive));
+      if (typeof GM_getResourceText !== 'function') {
+        return fallback;
+      }
+      const text = GM_getResourceText(name);
+      if (typeof text === 'string' && text.trim()) {
+        return text;
+      }
     } catch (err) {
-      // Ignore storage failures to keep runtime behavior stable.
+      // Keep script stable on resource load failures.
     }
+    return fallback;
   }
 
   function applyMovieModeStyle() {
@@ -218,16 +236,21 @@
     setTimeout(() => waitForUi(attempt + 1), RETRY_DELAY_MS);
   }
 
-  GM_addStyle(`
-    #${TOGGLE_ID}.active {
-      background: #337ab7 !important;
-      border-color: #2e6da4 !important;
-      color: #fff !important;
-    }
-    #${EXIT_ID}:hover {
-      color: #ff6666 !important;
-    }
-  `);
+  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+  if (resourceCss) {
+    GM_addStyle(resourceCss);
+  } else {
+    GM_addStyle(`
+      #${TOGGLE_ID}.active {
+        background: #337ab7 !important;
+        border-color: #2e6da4 !important;
+        color: #fff !important;
+      }
+      #${EXIT_ID}:hover {
+        color: #ff6666 !important;
+      }
+    `);
+  }
 
   applyMovieModeStyle();
   waitForUi();

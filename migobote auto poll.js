@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         migobote auto poll
 // @namespace    http://tampermonkey.net/
-// @version      2026.3
+// @version      2026.4
 // @description  Automatically fetches streams from holodex and presents a popup with valid streams to poll
 // @author       You
 // @match        https://om3tcw.com/r/*
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/migobote-auto-poll/utils.js
 // @grant        GM.xmlHttpRequest
 // @grant        GM_setValue
 // @grant        GM_getValue
@@ -18,9 +19,16 @@
   const EXCLUDED_TOPICS = new Set(['membersonly', 'membership', 'Original_Song', 'Music_Cover', 'watchalong']);
   const ADDED_OPTION_SELECTOR = '.poll-menu-option[data-autopoll-added="1"]';
   const INCLUDE_MALES_KEY = 'holodex_include_males';
+  const RETRY_DELAY_MS = 500;
+  const MAX_RETRIES = 120;
+
+  const autoPollUtils = window.CytubeMigoboteAutoPollUtils;
+  if (!autoPollUtils) {
+    return;
+  }
 
   let API_KEY = GM_getValue('holodex_api_key');
-  let includeMales = Boolean(GM_getValue(INCLUDE_MALES_KEY, false));
+  let includeMales = autoPollUtils.parseBoolean(GM_getValue(INCLUDE_MALES_KEY, false), false);
 
   function checkApiKey() {
     if (API_KEY) {
@@ -40,31 +48,6 @@
 
   function isExcludedTopic(topicId) {
     return EXCLUDED_TOPICS.has(topicId || '');
-  }
-
-  function isHololiveFemale(channel) {
-    if (!channel) {
-      return false;
-    }
-
-    const org = (channel.org || '').toLowerCase();
-    const suborg = (channel.suborg || '').toLowerCase();
-    const name = (channel.name || '').toLowerCase();
-    const enName = (channel.english_name || '').toLowerCase();
-
-    const isHolostars = org.includes('holostars') || suborg.includes('holostars') || name.includes('holostars') || enName.includes('holostars');
-    if (isHolostars) {
-      return false;
-    }
-
-    return org.includes('hololive') || suborg.includes('hololive') || name.includes('hololive') || enName.includes('hololive');
-  }
-
-  function streamIsLiveOrAboutToStart(stream) {
-    const secondsUntil = (new Date(stream.available_at) - new Date()) / 1000;
-    const isValidLive = stream.status === 'live' && !(Math.abs(secondsUntil) > 1800 && stream.live_viewers < 100);
-    const isAboutToStart = Math.abs(secondsUntil) < 600;
-    return isValidLive || isAboutToStart;
   }
 
   function fetchStreams(callback) {
@@ -94,21 +77,6 @@
       },
       onerror: () => callback([])
     });
-  }
-
-  function getTopicFromTitle(title) {
-    const match = title.match(/\s*(?:【|\[)(.+?)(?:】|\])\s*/);
-    return match && match[1] ? ` - ${match[1].trim()}` : '';
-  }
-
-  function checkIfRebroadCast(title) {
-    if (/rebroadcast/i.test(title)) {
-      return ' (Rebroadcast)';
-    }
-    if (/pre-?recorded/i.test(title)) {
-      return ' (Pre-recorded)';
-    }
-    return '';
   }
 
   function getPollMenu() {
@@ -142,11 +110,13 @@
   }
 
   function buildPollOptionText(stream) {
-    const topic = stream.topic_id ? ` - ${stream.topic_id}`.replaceAll('_', ' ') : getTopicFromTitle(stream.title);
+    const topic = stream.topic_id
+      ? ` - ${stream.topic_id}`.replaceAll('_', ' ')
+      : autoPollUtils.getTopicFromTitle(stream.title);
     const streamName = stream.channel.english_name || stream.channel.name || 'Unknown';
     let result = AP_TOPIC_FIRST ? `${topic.replaceAll('_', ' ')}${streamName}` : `${streamName}${topic.replaceAll('_', ' ')}`;
 
-    result += checkIfRebroadCast(stream.title || '');
+    result += autoPollUtils.checkIfRebroadcast(stream.title || '');
     if (stream.type === 'placeholder' && (stream.link || '').includes('twitch.tv')) {
       result += ' - Twitch';
     }
@@ -195,8 +165,8 @@
             (isStream || isValidTwitchPlaceholder) &&
             !isExcludedTopic(stream.topic_id) &&
             channel.org === 'Hololive' &&
-            (includeMales || isHololiveFemale(channel)) &&
-            streamIsLiveOrAboutToStart(stream)
+            (includeMales || autoPollUtils.isHololiveFemale(channel)) &&
+            autoPollUtils.streamIsLiveOrAboutToStart(stream)
           );
         })
         .sort((a, b) => new Date(a.available_at) - new Date(b.available_at))
@@ -206,6 +176,17 @@
 
       insertPollOption(pollMenu, 'Playlist');
     });
+  }
+
+  function waitForPollMenuAndInject(attempt = 0) {
+    if (getPollMenu()) {
+      injectPollControls();
+      return;
+    }
+    if (attempt >= MAX_RETRIES) {
+      return;
+    }
+    setTimeout(() => waitForPollMenuAndInject(attempt + 1), RETRY_DELAY_MS);
   }
 
   function injectPollControls() {
@@ -274,7 +255,7 @@
     }
 
     newPollButton.addEventListener('click', () => {
-      setTimeout(injectPollControls, 500);
+      setTimeout(() => waitForPollMenuAndInject(), RETRY_DELAY_MS);
     });
   })();
 

@@ -1,0 +1,17 @@
+#world-clock-btn.active {
+  background: #6c5ce7 !important;
+  color: #fff !important;
+}
+
+#world-clock-btn:hover {
+  background: #5a4dcc !important;
+  color: #fff !important;
+}
+
+#world-clock-li {
+  display: none;
+}
+
+#world-clock-li a {
+  white-space: nowrap;
+}

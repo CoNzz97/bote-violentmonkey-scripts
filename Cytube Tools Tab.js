@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         Cytube Tools Tab
 // @namespace    cytube.tools.tab
-// @version      1.2
+// @version      1.3
 // @description  Adds a 'Tools' tab to organize script buttons and content
 // @match        https://om3tcw.com/r/*
 // @grant        GM_addStyle
+// @grant        GM_getResourceText
+// @resource     cytubeToolsTabStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/cytube-tools-tab/styles.css
 // ==/UserScript==
 
 (function() {
@@ -16,22 +18,43 @@
   const TAB_LIST_SELECTOR = 'ul.nav.nav-tabs[role="tablist"]';
   const RETRY_DELAY_MS = 500;
   const MAX_RETRIES = 120;
+  const RESOURCE_NAMES = {
+    styles: 'cytubeToolsTabStyles'
+  };
+
+  function safeGetResourceText(name, fallback = '') {
+    try {
+      if (typeof GM_getResourceText !== 'function') {
+        return fallback;
+      }
+      const text = GM_getResourceText(name);
+      if (typeof text === 'string' && text.trim()) {
+        return text;
+      }
+    } catch (err) {
+      // Keep script stable on resource load failures.
+    }
+    return fallback;
+  }
 
   function injectStyles() {
+    const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+    if (resourceCss) {
+      GM_addStyle(resourceCss);
+      return;
+    }
     GM_addStyle(`
       #${TOOLS_TAB_ID} {
         background: #1a1a1a;
         color: #ddd;
         min-height: 200px;
       }
-
       #${BUTTON_CONTAINER_ID} {
         padding: 10px;
         display: flex;
         flex-wrap: wrap;
         gap: 5px;
       }
-
       #${CONTENT_AREA_ID} {
         padding: 10px;
         background: #252525;
@@ -39,7 +62,6 @@
         overflow-y: auto;
         max-height: 400px;
       }
-
       #${BUTTON_CONTAINER_ID} button {
         margin: 0 !important;
       }

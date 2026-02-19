@@ -1,0 +1,74 @@
+@keyframes tweetanim {
+  to {
+    clip-path: inset(0 -34% 0 0);
+  }
+}
+
+#tweet-main-toggle.active {
+  background: #337ab7 !important;
+  border-color: #2e6da4 !important;
+}
+
+.tweet-inline-preview {
+  background: #000;
+  color: #fff;
+  border: 1px solid #2f3336;
+  border-radius: 8px;
+  max-width: 350px;
+  font-family: system-ui;
+  margin: 4px 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.tweet-content {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+}
+
+.tweet-user {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.tweet-user-name {
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.tweet-user-handle {
+  color: #71767b;
+  font-size: 13px;
+}
+
+.tweet-text {
+  font-size: 14px;
+  white-space: pre-wrap;
+  margin: 0 0 8px 0;
+}
+
+.tweet-image {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.tweet-image > div {
+  overflow: hidden;
+  border-radius: 6px;
+  background: #111;
+}
+
+.tweet-image img,
+.tweet-image video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.tweet-image :nth-child(1):nth-last-child(1) {
+  grid-column: span 2;
+}

@@ -1,0 +1,24 @@
+#toolsTab {
+  background: #1a1a1a;
+  color: #ddd;
+  min-height: 200px;
+}
+
+#tools-button-container {
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+#tools-content-area {
+  padding: 10px;
+  background: #252525;
+  border-radius: 4px;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+#tools-button-container button {
+  margin: 0 !important;
+}

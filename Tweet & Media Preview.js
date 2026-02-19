@@ -1,11 +1,14 @@
 // ==UserScript==
 // @name         Tweet & Media Preview
 // @namespace    http://tampermonkey.net/
-// @version      2026.02.17
+// @version      2026.02.19
 // @description  Inline tweet + media
 // @author       You
 // @match        https://om3tcw.com/r/*
+// @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/tweet-media-preview/utils.js
 // @grant        GM_addStyle
+// @grant        GM_getResourceText
+// @resource     tweetMediaPreviewStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/tweet-media-preview/styles.css
 // ==/UserScript==
 
 (function() {
@@ -15,6 +18,10 @@
   const TOGGLE_ID = 'tweet-main-toggle';
   const RETRY_DELAY_MS = 500;
   const MAX_RETRIES = 120;
+  const MESSAGE_PROCESSOR_RETRY_MS = 200;
+  const RESOURCE_NAMES = {
+    styles: 'tweetMediaPreviewStyles'
+  };
 
   const API_BASE = 'https://unable-diet-least-attorneys.trycloudflare.com';
   const API_ORIGIN = new URL(API_BASE).origin;
@@ -25,6 +32,39 @@
   let tweetPreviewActive = readStoredEnabled();
   const tweetInfoCache = {};
   const tweetVideoSourcesCache = {};
+  let fallbackObserver = null;
+
+  const tweetPreviewUtils = window.CytubeTweetMediaPreviewUtils;
+  if (!tweetPreviewUtils) {
+    return;
+  }
+
+  function safeGetResourceText(name, fallback = '') {
+    try {
+      if (typeof GM_getResourceText !== 'function') {
+        return fallback;
+      }
+      const text = GM_getResourceText(name);
+      if (typeof text === 'string' && text.trim()) {
+        return text;
+      }
+    } catch (err) {
+      // Keep script stable on resource load failures.
+    }
+    return fallback;
+  }
+
+  function waitForEl(selector, attempt = 0) {
+    const node = document.querySelector(selector);
+    if (node) {
+      return Promise.resolve(node);
+    }
+    if (attempt >= MAX_RETRIES) {
+      return Promise.resolve(null);
+    }
+    return new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS))
+      .then(() => waitForEl(selector, attempt + 1));
+  }
 
   function readStoredEnabled() {
     try {
@@ -104,13 +144,8 @@
     }
   }
 
-  function extractTweetId(url) {
-    const match = tweetRegex.exec(url || '');
-    return match ? match[2] : null;
-  }
-
   async function fetchSyndicationVideoSources(tweetUrl) {
-    const tweetId = extractTweetId(tweetUrl);
+    const tweetId = tweetPreviewUtils.extractTweetId(tweetUrl, tweetRegex);
     if (!tweetId) {
       return [];
     }
@@ -152,10 +187,6 @@
       tweetVideoSourcesCache[tweetId] = [];
       return [];
     }
-  }
-
-  function tweetHasVideo(info) {
-    return Array.isArray(info?.media_attachments) && info.media_attachments.some((a) => a?.type === 'video' || a?.type === 'gifv');
   }
 
   function createTweetIframe(tweetId) {
@@ -240,7 +271,7 @@
       const mediaWrapper = document.createElement('div');
 
       if (attachment.type === 'video' || attachment.type === 'gifv') {
-        const sourceCandidates = buildVideoSourceCandidates(attachment.url, attachment.remote_url, ...syndicationSources);
+        const sourceCandidates = tweetPreviewUtils.buildVideoSourceCandidates(attachment.url, attachment.remote_url, ...syndicationSources);
         const video = document.createElement('video');
         video.controls = true;
         video.muted = true;
@@ -257,7 +288,7 @@
 
         mediaWrapper.appendChild(video);
         mediaWrapper.appendChild(fallbackLink);
-        attachVideoSourceWithFallback(video, sourceCandidates, fallbackLink);
+        tweetPreviewUtils.attachVideoSourceWithFallback(video, sourceCandidates, fallbackLink);
       } else {
         mediaWrapper.innerHTML = `<a href="${attachment.url}" target="_blank" referrerpolicy="no-referrer"><img src="${attachment.preview_url}" style="width:100%; border-radius:6px; display:block;"></a>`;
       }
@@ -285,62 +316,6 @@
     }
   }
 
-  function buildVideoSourceCandidates(...urls) {
-    const candidates = [];
-    const seen = new Set();
-
-    function addCandidate(url) {
-      const value = (url || '').trim();
-      if (!value || seen.has(value)) {
-        return;
-      }
-      seen.add(value);
-      candidates.push(value);
-    }
-
-    urls.forEach(addCandidate);
-
-    const baseCandidates = [...candidates];
-    baseCandidates.forEach((url) => {
-      if (!/video\.twimg\.com/i.test(url) || url.includes('?')) {
-        return;
-      }
-      addCandidate(`${url}?tag=14`);
-      addCandidate(`${url}?tag=16`);
-      addCandidate(`${url}?tag=12`);
-    });
-
-    return candidates;
-  }
-
-  function attachVideoSourceWithFallback(video, sourceCandidates, fallbackLink) {
-    if (!sourceCandidates.length) {
-      video.style.display = 'none';
-      fallbackLink.style.display = 'block';
-      return;
-    }
-
-    let sourceIndex = 0;
-    fallbackLink.href = sourceCandidates[0];
-
-    const loadAt = (index) => {
-      if (index >= sourceCandidates.length) {
-        video.style.display = 'none';
-        fallbackLink.style.display = 'block';
-        return;
-      }
-      sourceIndex = index;
-      video.src = sourceCandidates[sourceIndex];
-      video.load();
-    };
-
-    video.addEventListener('error', () => {
-      loadAt(sourceIndex + 1);
-    });
-
-    loadAt(0);
-  }
-
   function addTweetPreview(link, messageEl) {
     const button = createPreviewToggle('tweet-preview-toggle');
     if (!link.parentNode) {
@@ -365,8 +340,8 @@
       if (info) {
         embed.style.display = 'block';
         preview.querySelector('.tweet-loader')?.remove();
-        const tweetId = extractTweetId(link.href);
-        if (tweetId && tweetHasVideo(info)) {
+        const tweetId = tweetPreviewUtils.extractTweetId(link.href, tweetRegex);
+        if (tweetId && tweetPreviewUtils.tweetHasVideo(info)) {
           const iframe = createTweetIframe(tweetId);
           const fallbackLink = document.createElement('a');
           fallbackLink.href = link.href;
@@ -407,7 +382,7 @@
       const isVideo = /\.(mp4|webm|mov)$/i.test(link.href);
 
       if (isVideo) {
-        const sourceCandidates = buildVideoSourceCandidates(link.href);
+        const sourceCandidates = tweetPreviewUtils.buildVideoSourceCandidates(link.href);
         const video = document.createElement('video');
         video.controls = true;
         video.playsInline = true;
@@ -423,7 +398,7 @@
         fallbackLink.textContent = '⚠️ Video blocked. Click to watch externally.';
 
         embed.replaceChildren(video, fallbackLink);
-        attachVideoSourceWithFallback(video, sourceCandidates, fallbackLink);
+        tweetPreviewUtils.attachVideoSourceWithFallback(video, sourceCandidates, fallbackLink);
       } else {
         embed.innerHTML = `<a href="${link.href}" target="_blank" referrerpolicy="no-referrer"><img src="${link.href}" style="width:100%; border-radius:6px; display:block;" loading="lazy"></a>`;
       }
@@ -448,39 +423,86 @@
     return container;
   }
 
-  async function waitForMessageProcessor() {
-    while (true) {
-      if (typeof waitForFunc !== 'undefined') {
-        await waitForFunc('MESSAGE_PROCESSOR');
-        return typeof MESSAGE_PROCESSOR !== 'undefined' ? MESSAGE_PROCESSOR : null;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
+  function processMessageNodeLinks(node) {
+    if (!(node instanceof HTMLElement)) {
+      return;
     }
+    if (node.matches('a')) {
+      addPreviewIfTweetOrMedia(node);
+    }
+    node.querySelectorAll('a').forEach(addPreviewIfTweetOrMedia);
   }
 
-  GM_addStyle(`
-    @keyframes tweetanim {to{clip-path:inset(0 -34% 0 0)}}
-    #${TOGGLE_ID}.active {background:#337ab7 !important; border-color:#2e6da4 !important;}
-    .tweet-inline-preview {background:#000;color:#fff;border:1px solid #2f3336;border-radius:8px;max-width:350px;font-family:system-ui;margin:4px 0;padding:0;overflow:hidden;}
-    .tweet-content {display:flex;flex-direction:column;padding:8px;}
-    .tweet-user {display:flex;gap:8px;align-items:center;margin-bottom:6px;}
-    .tweet-user-name {font-weight:bold;font-size:14px;}
-    .tweet-user-handle {color:#71767b;font-size:13px;}
-    .tweet-text {font-size:14px;white-space:pre-wrap;margin:0 0 8px 0;}
-    .tweet-image {display:grid;grid-template-columns:1fr 1fr;gap:4px;}
-    .tweet-image > div {overflow:hidden;border-radius:6px;background:#111;}
-    .tweet-image img, .tweet-image video {width:100%; height:auto; display:block;}
-    .tweet-image :nth-child(1):nth-last-child(1){grid-column:span 2;}
-  `);
+  function startFallbackMessageObserver() {
+    if (fallbackObserver) {
+      return true;
+    }
+    const messageBuffer = document.getElementById('messagebuffer');
+    if (!messageBuffer) {
+      return false;
+    }
+
+    fallbackObserver = new MutationObserver((mutations) => {
+      if (!tweetPreviewActive) {
+        return;
+      }
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => processMessageNodeLinks(node));
+      });
+    });
+    fallbackObserver.observe(messageBuffer, { childList: true });
+    return true;
+  }
+
+  function startFallbackMessageObserverWithWait(attempt = 0) {
+    if (startFallbackMessageObserver()) {
+      return;
+    }
+    if (attempt >= MAX_RETRIES) {
+      return;
+    }
+    setTimeout(() => startFallbackMessageObserverWithWait(attempt + 1), RETRY_DELAY_MS);
+  }
+
+  async function waitForMessageProcessor(attempt = 0) {
+    if (typeof waitForFunc !== 'undefined') {
+      try {
+        await waitForFunc('MESSAGE_PROCESSOR');
+      } catch (err) {
+        return null;
+      }
+      return typeof MESSAGE_PROCESSOR !== 'undefined' ? MESSAGE_PROCESSOR : null;
+    }
+
+    if (attempt >= MAX_RETRIES) {
+      return null;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, MESSAGE_PROCESSOR_RETRY_MS));
+    return waitForMessageProcessor(attempt + 1);
+  }
+
+  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+  if (resourceCss) {
+    GM_addStyle(resourceCss);
+  } else {
+    GM_addStyle(`
+      #${TOGGLE_ID}.active { background:#337ab7 !important; border-color:#2e6da4 !important; }
+      .tweet-inline-preview { background:#000; color:#fff; border:1px solid #2f3336; border-radius:8px; }
+    `);
+  }
 
   (async () => {
     initIframeMessageBridge();
-    createMainToggle();
+    const toolsHost = await waitForEl('#tools-button-container');
+    if (toolsHost) {
+      createMainToggle();
+    }
     scanExistingLinks();
 
     const messageProcessor = await waitForMessageProcessor();
-    if (!messageProcessor) {
+    if (!messageProcessor || typeof messageProcessor.addTap !== 'function') {
+      startFallbackMessageObserverWithWait();
       return;
     }
 
