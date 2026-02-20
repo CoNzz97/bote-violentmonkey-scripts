@@ -65,6 +65,7 @@
     export: 'cytube-tools-poll-history-analyzer-export',
     stats: 'cytube-tools-poll-history-analyzer-stats',
     winnerDb: 'cytube-tools-poll-history-analyzer-winnerdb',
+    manualReview: 'cytube-tools-poll-history-analyzer-manual-review',
     list: 'cytube-tools-poll-history-analyzer-list'
   };
 
@@ -539,6 +540,52 @@
     return 'None';
   }
 
+  function buildRecordSearchHaystack(record) {
+    if (!record || typeof record !== 'object') {
+      return '';
+    }
+    const options = Array.isArray(record.options) ? record.options : [];
+    return [
+      record.title,
+      record.winnerOfficialRaw,
+      record.winnerSoftRaw,
+      getWinnerGroupLabel(getWinnerRaw(record)),
+      ...options.map((option) => option.rawLabel),
+      ...options.map((option) => option.entity || '')
+    ].join(' ');
+  }
+
+  function recordMatchesSearch(record, search) {
+    if (!search) {
+      return true;
+    }
+    return normalizeText(buildRecordSearchHaystack(record)).includes(search);
+  }
+
+  function isUnknownWinnerRecord(record) {
+    if (!record || typeof record !== 'object') {
+      return false;
+    }
+    if (record.winnerMode === 'none') {
+      return false;
+    }
+    const winnerRaw = getWinnerRaw(record);
+    if (!winnerRaw) {
+      return true;
+    }
+    return normalizeText(getWinnerGroupLabel(winnerRaw)) === 'unknown';
+  }
+
+  function getManualReviewRecords() {
+    const search = normalizeText(state.settings.search);
+    return state.records.filter((record) => {
+      if (!recordMatchesSearch(record, search)) {
+        return false;
+      }
+      return record.winnerMode === 'none' || isUnknownWinnerRecord(record);
+    });
+  }
+
   function getFilteredRecords() {
     const search = normalizeText(state.settings.search);
     const winnerFilter = state.settings.winnerFilter;
@@ -546,20 +593,7 @@
       if (winnerFilter !== 'all' && record.winnerMode !== winnerFilter) {
         return false;
       }
-
-      if (!search) {
-        return true;
-      }
-
-      const haystack = [
-        record.title,
-        record.winnerOfficialRaw,
-        record.winnerSoftRaw,
-        getWinnerGroupLabel(getWinnerRaw(record)),
-        ...record.options.map((option) => option.rawLabel),
-        ...record.options.map((option) => option.entity || '')
-      ].join(' ');
-      return normalizeText(haystack).includes(search);
+      return recordMatchesSearch(record, search);
     });
   }
 
@@ -625,6 +659,58 @@
     persistSettings();
     rebuildRecordsFromAliasData();
     syncAliasRulesTextarea();
+    renderStatsAndList();
+  }
+
+  function setManualWinnerForRecord(recordHash, winnerLabelRaw) {
+    const winnerLabel = String(winnerLabelRaw || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+    if (!winnerLabel) {
+      return;
+    }
+
+    const recordIndex = state.records.findIndex((record) => record.hash === recordHash);
+    if (recordIndex < 0) {
+      return;
+    }
+
+    const existing = state.records[recordIndex];
+    const winnerKey = normalizeText(winnerLabel);
+    if (winnerKey) {
+      state.settings.winnerOverrides = {
+        ...(state.settings.winnerOverrides || {}),
+        [winnerKey]: winnerLabel
+      };
+      persistSettings();
+    }
+
+    const optionsWithVotes = Array.isArray(existing.options)
+      ? existing.options.map((option) => {
+        const votes = getOptionVote(option);
+        return {
+          ...option,
+          votes: Number.isFinite(votes) ? votes : null
+        };
+      })
+      : [];
+
+    const existingSource = String(existing.source || 'history');
+    const nextSource = existingSource.includes('manual') ? existingSource : `${existingSource}-manual`;
+    const updated = sanitizeRecord({
+      ...existing,
+      source: nextSource,
+      options: optionsWithVotes,
+      winnerOfficialRaw: winnerLabel,
+      winnerSoftRaw: null,
+      softTie: false
+    });
+    if (!updated) {
+      return;
+    }
+
+    updated.hash = existing.hash;
+    updated.id = `${existing.hash}-${updated.createdAt}`;
+    state.records[recordIndex] = updated;
+    persistRecords();
     renderStatsAndList();
   }
 
@@ -732,6 +818,117 @@
     });
   }
 
+  function renderManualReviewList(reviewEl, reviewRecords) {
+    reviewEl.replaceChildren();
+
+    const head = document.createElement('div');
+    head.className = 'cytube-tools-poll-history-analyzer-review-head';
+    head.textContent = `Needs manual winner review (${reviewRecords.length})`;
+    reviewEl.appendChild(head);
+
+    if (!reviewRecords.length) {
+      const empty = document.createElement('div');
+      empty.className = 'cytube-tools-poll-history-analyzer-empty';
+      empty.textContent = 'No no-winner/unknown polls in current search.';
+      reviewEl.appendChild(empty);
+      return;
+    }
+
+    reviewRecords.slice(0, 120).forEach((record) => {
+      const row = document.createElement('details');
+      row.className = 'cytube-tools-poll-history-analyzer-review-row';
+
+      const summary = document.createElement('summary');
+      summary.className = 'cytube-tools-poll-history-analyzer-review-summary';
+      const reason = record.winnerMode === 'none' ? 'No winner' : 'Unknown winner';
+      summary.textContent = `${reason} | ${new Date(record.createdAt).toLocaleString()} | ${record.title}`;
+      row.appendChild(summary);
+
+      const meta = document.createElement('div');
+      meta.className = 'cytube-tools-poll-history-analyzer-review-meta';
+      meta.textContent = `Current winner: ${formatWinnerForDisplay(record)} | Source: ${record.source}`;
+      row.appendChild(meta);
+
+      const optionsWrap = document.createElement('div');
+      optionsWrap.className = 'cytube-tools-poll-history-analyzer-review-options';
+      const options = Array.isArray(record.options) ? record.options : [];
+      if (!options.length) {
+        const empty = document.createElement('div');
+        empty.className = 'cytube-tools-poll-history-analyzer-empty';
+        empty.textContent = 'No options captured for this poll.';
+        optionsWrap.appendChild(empty);
+      }
+
+      options.forEach((option) => {
+        const votes = getOptionVote(option);
+        const cleanedLabel = stripVotePrefixFromLabel(option.rawLabel, votes) || option.rawLabel;
+        if (!cleanedLabel) {
+          return;
+        }
+
+        const optionRow = document.createElement('div');
+        optionRow.className = 'cytube-tools-poll-history-analyzer-review-option-row';
+
+        const label = document.createElement('div');
+        label.className = 'cytube-tools-poll-history-analyzer-review-option-label';
+        label.textContent = cleanedLabel;
+
+        const voteLabel = document.createElement('div');
+        voteLabel.className = 'cytube-tools-poll-history-analyzer-review-option-votes';
+        voteLabel.textContent = Number.isFinite(votes)
+          ? `${votes} vote${votes === 1 ? '' : 's'}`
+          : 'Votes unknown';
+
+        const setBtn = document.createElement('button');
+        setBtn.type = 'button';
+        setBtn.className = 'btn btn-xs btn-primary';
+        setBtn.textContent = 'Set Winner';
+        setBtn.addEventListener('click', () => {
+          setManualWinnerForRecord(record.hash, cleanedLabel);
+        });
+
+        optionRow.appendChild(label);
+        optionRow.appendChild(voteLabel);
+        optionRow.appendChild(setBtn);
+        optionsWrap.appendChild(optionRow);
+      });
+
+      const customRow = document.createElement('div');
+      customRow.className = 'cytube-tools-poll-history-analyzer-review-custom-row';
+
+      const customInput = document.createElement('input');
+      customInput.type = 'text';
+      customInput.className = 'form-control';
+      customInput.maxLength = 160;
+      customInput.placeholder = 'Custom winner name';
+
+      const customBtn = document.createElement('button');
+      customBtn.type = 'button';
+      customBtn.className = 'btn btn-xs btn-default';
+      customBtn.textContent = 'Set Custom Winner';
+
+      const submitCustomWinner = () => {
+        setManualWinnerForRecord(record.hash, customInput.value);
+      };
+
+      customBtn.addEventListener('click', submitCustomWinner);
+      customInput.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+          return;
+        }
+        event.preventDefault();
+        submitCustomWinner();
+      });
+
+      customRow.appendChild(customInput);
+      customRow.appendChild(customBtn);
+      optionsWrap.appendChild(customRow);
+
+      row.appendChild(optionsWrap);
+      reviewEl.appendChild(row);
+    });
+  }
+
   function renderRecordList(listEl, filtered) {
     listEl.replaceChildren();
     if (!filtered.length) {
@@ -783,12 +980,14 @@
   function renderStatsAndList() {
     const statsEl = document.getElementById(UI_IDS.stats);
     const winnerDbEl = document.getElementById(UI_IDS.winnerDb);
+    const reviewEl = document.getElementById(UI_IDS.manualReview);
     const listEl = document.getElementById(UI_IDS.list);
     if (!statsEl || !winnerDbEl || !listEl) {
       return;
     }
 
     const filtered = getFilteredRecords();
+    const reviewRecords = getManualReviewRecords();
     const winnerCounts = new Map();
     const tagCounts = new Map();
     const winnerDb = buildWinnerDatabase(filtered);
@@ -822,12 +1021,16 @@
     statsEl.textContent = [
       `Total records: ${state.records.length}`,
       `Filtered: ${filtered.length}`,
+      `Needs review: ${reviewRecords.length}`,
       `Winner groups: ${winnerDb.length}`,
       `Top winners: ${topWinners || 'n/a'}`,
       `Top tags: ${topTags || 'n/a'}`
     ].join('  |  ');
 
     renderWinnerDatabase(winnerDbEl, winnerDb);
+    if (reviewEl) {
+      renderManualReviewList(reviewEl, reviewRecords);
+    }
     renderRecordList(listEl, filtered);
   }
 

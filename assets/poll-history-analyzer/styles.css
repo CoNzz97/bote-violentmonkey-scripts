@@ -163,6 +163,83 @@
   word-break: break-word;
 }
 
+.cytube-tools-poll-history-analyzer-manual-review {
+  max-height: 360px;
+  overflow-y: auto;
+  background: #171717;
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+  padding: 6px;
+  margin-bottom: 8px;
+}
+
+.cytube-tools-poll-history-analyzer-review-head {
+  font-size: 12px;
+  color: #dce2e8;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.cytube-tools-poll-history-analyzer-review-row {
+  border: 1px solid #2d2d2d;
+  border-radius: 4px;
+  background: #111;
+  margin-bottom: 6px;
+  padding: 5px;
+}
+
+.cytube-tools-poll-history-analyzer-review-row:last-child {
+  margin-bottom: 0;
+}
+
+.cytube-tools-poll-history-analyzer-review-summary {
+  cursor: pointer;
+  color: #edf0f3;
+  font-weight: 600;
+  outline: none;
+  user-select: none;
+}
+
+.cytube-tools-poll-history-analyzer-review-meta {
+  font-size: 11px;
+  color: #9aa0a6;
+  margin: 4px 0 6px;
+}
+
+.cytube-tools-poll-history-analyzer-review-options {
+  display: grid;
+  gap: 6px;
+}
+
+.cytube-tools-poll-history-analyzer-review-option-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.cytube-tools-poll-history-analyzer-review-option-label {
+  color: #d4d8df;
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.cytube-tools-poll-history-analyzer-review-option-votes {
+  color: #aeb6c0;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.cytube-tools-poll-history-analyzer-review-custom-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid #232323;
+}
+
 .cytube-tools-poll-history-analyzer-list {
   max-height: 340px;
   overflow-y: auto;
@@ -238,6 +315,14 @@
 
 @media (max-width: 900px) {
   .cytube-tools-poll-history-analyzer-winner-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .cytube-tools-poll-history-analyzer-review-option-row {
+    grid-template-columns: 1fr;
+  }
+
+  .cytube-tools-poll-history-analyzer-review-custom-row {
     grid-template-columns: 1fr;
   }
 }
