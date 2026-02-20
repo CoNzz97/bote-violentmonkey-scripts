@@ -617,25 +617,14 @@
     if (!entry || typeof entry !== 'object') {
       return '';
     }
-    const polls = Array.isArray(entry.polls) ? entry.polls : [];
-    const pollOptionLabels = [];
-    polls.forEach((poll) => {
-      const options = Array.isArray(poll && poll.options) ? poll.options : [];
-      options.forEach((label) => {
-        pollOptionLabels.push(label);
-      });
-    });
-
+    // Keep winner-group search strict: only match group identity fields,
+    // not poll titles/options, to avoid unrelated groups matching query terms.
     return [
       entry.label,
       entry.key,
       entry.canonicalKey,
       ...(Array.isArray(entry.rawWinners) ? entry.rawWinners : []),
-      ...polls.map((poll) => (poll ? poll.title : '')),
-      ...polls.map((poll) => (poll ? poll.winnerRaw : '')),
-      ...polls.map((poll) => (poll ? poll.source : '')),
-      ...polls.map((poll) => (poll ? poll.winnerMode : '')),
-      ...pollOptionLabels
+      ...(Array.isArray(entry.rawWinnerKeys) ? entry.rawWinnerKeys : [])
     ].join(' ');
   }
 
