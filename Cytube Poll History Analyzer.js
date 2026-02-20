@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cytube Poll History Analyzer
 // @namespace    cytube.poll.history.analyzer
-// @version      2.1
+// @version      2.2
 // @description  Parse poll history, group name aliases, and track soft winners
 // @match        https://om3tcw.com/r/*
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/storage-utils.js
@@ -977,10 +977,40 @@
     });
   }
 
+  function ensureManualReviewContainer() {
+    let reviewEl = document.getElementById(UI_IDS.manualReview);
+    if (reviewEl) {
+      return reviewEl;
+    }
+
+    const listEl = document.getElementById(UI_IDS.list);
+    reviewEl = document.createElement('div');
+    reviewEl.id = UI_IDS.manualReview;
+    reviewEl.className = 'cytube-tools-poll-history-analyzer-manual-review';
+
+    if (listEl && listEl.parentNode) {
+      listEl.parentNode.insertBefore(reviewEl, listEl);
+      return reviewEl;
+    }
+
+    const winnerDbEl = document.getElementById(UI_IDS.winnerDb);
+    if (winnerDbEl && winnerDbEl.parentNode) {
+      winnerDbEl.parentNode.insertBefore(reviewEl, winnerDbEl.nextSibling);
+      return reviewEl;
+    }
+
+    if (state.ui.panel) {
+      state.ui.panel.appendChild(reviewEl);
+      return reviewEl;
+    }
+
+    return null;
+  }
+
   function renderStatsAndList() {
     const statsEl = document.getElementById(UI_IDS.stats);
     const winnerDbEl = document.getElementById(UI_IDS.winnerDb);
-    const reviewEl = document.getElementById(UI_IDS.manualReview);
+    const reviewEl = ensureManualReviewContainer();
     const listEl = document.getElementById(UI_IDS.list);
     if (!statsEl || !winnerDbEl || !listEl) {
       return;
@@ -1208,6 +1238,7 @@
     }
 
     state.ui.panel.innerHTML = safeGetResourceText(RESOURCE_NAMES.panelHtml, FALLBACK_PANEL_HTML);
+    ensureManualReviewContainer();
 
     bindUiEvents();
     fillFormFromSettings();
