@@ -119,7 +119,7 @@
 
 .cytube-tools-poll-history-analyzer-winner-controls {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(220px, 1.4fr) auto auto;
+  grid-template-columns: minmax(140px, 1fr) minmax(220px, 1.4fr) auto auto auto;
   gap: 6px;
   margin: 6px 0;
   align-items: center;
@@ -238,6 +238,11 @@
   margin-top: 4px;
   padding-top: 6px;
   border-top: 1px solid #232323;
+}
+
+.cytube-tools-poll-history-analyzer-review-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .cytube-tools-poll-history-analyzer-list {

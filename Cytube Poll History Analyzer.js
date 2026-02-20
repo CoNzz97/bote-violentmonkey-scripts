@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cytube Poll History Analyzer
 // @namespace    cytube.poll.history.analyzer
-// @version      2.2
+// @version      2.4
 // @description  Parse poll history, group name aliases, and track soft winners
 // @match        https://om3tcw.com/r/*
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/storage-utils.js
@@ -61,6 +61,7 @@
     openPolls: 'cytube-tools-poll-history-analyzer-open-polls',
     rescan: 'cytube-tools-poll-history-analyzer-rescan',
     markSoft: 'cytube-tools-poll-history-analyzer-mark-soft',
+    removeNoWinner: 'cytube-tools-poll-history-analyzer-remove-no-winner',
     clear: 'cytube-tools-poll-history-analyzer-clear',
     export: 'cytube-tools-poll-history-analyzer-export',
     stats: 'cytube-tools-poll-history-analyzer-stats',
@@ -545,11 +546,16 @@
       return '';
     }
     const options = Array.isArray(record.options) ? record.options : [];
+    const winnerRaw = getWinnerRaw(record);
+    const winnerGroupLabel = winnerRaw ? getWinnerGroupLabel(winnerRaw) : '';
     return [
       record.title,
       record.winnerOfficialRaw,
       record.winnerSoftRaw,
-      getWinnerGroupLabel(getWinnerRaw(record)),
+      record.winnerOfficialGroup,
+      record.winnerSoftGroup,
+      getWinnerLabel(record),
+      winnerGroupLabel,
       ...options.map((option) => option.rawLabel),
       ...options.map((option) => option.entity || '')
     ].join(' ');
@@ -560,6 +566,16 @@
       return true;
     }
     return normalizeText(buildRecordSearchHaystack(record)).includes(search);
+  }
+
+  function recordMatchesWinnerFilter(record, winnerFilter) {
+    if (!record || typeof record !== 'object') {
+      return false;
+    }
+    if (winnerFilter !== 'all' && record.winnerMode !== winnerFilter) {
+      return false;
+    }
+    return true;
   }
 
   function isUnknownWinnerRecord(record) {
@@ -590,11 +606,52 @@
     const search = normalizeText(state.settings.search);
     const winnerFilter = state.settings.winnerFilter;
     return state.records.filter((record) => {
-      if (winnerFilter !== 'all' && record.winnerMode !== winnerFilter) {
+      if (!recordMatchesWinnerFilter(record, winnerFilter)) {
         return false;
       }
       return recordMatchesSearch(record, search);
     });
+  }
+
+  function buildWinnerEntrySearchHaystack(entry) {
+    if (!entry || typeof entry !== 'object') {
+      return '';
+    }
+    const polls = Array.isArray(entry.polls) ? entry.polls : [];
+    const pollOptionLabels = [];
+    polls.forEach((poll) => {
+      const options = Array.isArray(poll && poll.options) ? poll.options : [];
+      options.forEach((label) => {
+        pollOptionLabels.push(label);
+      });
+    });
+
+    return [
+      entry.label,
+      entry.key,
+      entry.canonicalKey,
+      ...(Array.isArray(entry.rawWinners) ? entry.rawWinners : []),
+      ...polls.map((poll) => (poll ? poll.title : '')),
+      ...polls.map((poll) => (poll ? poll.winnerRaw : '')),
+      ...polls.map((poll) => (poll ? poll.source : '')),
+      ...polls.map((poll) => (poll ? poll.winnerMode : '')),
+      ...pollOptionLabels
+    ].join(' ');
+  }
+
+  function winnerEntryMatchesSearch(entry, search) {
+    if (!search) {
+      return true;
+    }
+    return normalizeText(buildWinnerEntrySearchHaystack(entry)).includes(search);
+  }
+
+  function getFilteredWinnerDatabase() {
+    const search = normalizeText(state.settings.search);
+    const winnerFilter = state.settings.winnerFilter;
+    const winnerRecords = state.records.filter((record) => recordMatchesWinnerFilter(record, winnerFilter));
+    const winnerDb = buildWinnerDatabase(winnerRecords);
+    return winnerDb.filter((entry) => winnerEntryMatchesSearch(entry, search));
   }
 
   function buildWinnerDatabase(records) {
@@ -659,6 +716,102 @@
     persistSettings();
     rebuildRecordsFromAliasData();
     syncAliasRulesTextarea();
+    renderStatsAndList();
+  }
+
+  function buildWinnerEntryKeySet(entry) {
+    if (!entry || typeof entry !== 'object') {
+      return new Set();
+    }
+    const rawKeys = Array.isArray(entry.rawWinnerKeys) ? entry.rawWinnerKeys : [];
+    return new Set(
+      [
+        normalizeText(entry.key),
+        normalizeText(entry.canonicalKey),
+        ...rawKeys.map((rawKey) => normalizeText(rawKey))
+      ].filter(Boolean)
+    );
+  }
+
+  function recordBelongsToWinnerGroup(record, entry, entryKeySet = buildWinnerEntryKeySet(entry)) {
+    if (!record || typeof record !== 'object' || !entryKeySet.size) {
+      return false;
+    }
+    const winnerRaw = getWinnerRaw(record);
+    if (!winnerRaw) {
+      return false;
+    }
+    const winnerRawKey = normalizeText(winnerRaw);
+    if (!winnerRawKey) {
+      return false;
+    }
+    if (entryKeySet.has(winnerRawKey)) {
+      return true;
+    }
+
+    const resolved = resolveWinnerGroupForDatabase(winnerRaw);
+    const resolvedKey = normalizeText(resolved && resolved.key);
+    return Boolean(resolvedKey && entryKeySet.has(resolvedKey));
+  }
+
+  function removeWinnerGroup(entry) {
+    if (!entry || typeof entry !== 'object') {
+      return;
+    }
+
+    const entryKeySet = buildWinnerEntryKeySet(entry);
+    const matchingPollCount = state.records.reduce((count, record) => (
+      count + (recordBelongsToWinnerGroup(record, entry, entryKeySet) ? 1 : 0)
+    ), 0);
+
+    const label = String(entry.label || (Array.isArray(entry.rawWinners) ? entry.rawWinners[0] : '') || 'unknown').trim();
+    const noun = matchingPollCount === 1 ? 'poll' : 'polls';
+    const confirmed = window.confirm(`Remove winner group "${label}" and ${matchingPollCount} ${noun} from local history?`);
+    if (!confirmed) {
+      return;
+    }
+
+    const nextState = winnerDatabaseEngine.removeWinnerGroupData({
+      entry,
+      aliasRulesText: state.settings.aliasRulesText,
+      winnerOverrides: state.settings.winnerOverrides
+    });
+    if (nextState) {
+      state.settings.aliasRulesText = nextState.aliasRulesText;
+      state.settings.winnerOverrides = nextState.winnerOverrides;
+      runtimeAliasData = parseAliasRules(state.settings.aliasRulesText);
+      persistSettings();
+      syncAliasRulesTextarea();
+    }
+
+    if (matchingPollCount > 0) {
+      state.records = state.records.filter((record) => !recordBelongsToWinnerGroup(record, entry, entryKeySet));
+    }
+    state.openWinnerGroups.delete(entry.key);
+    rebuildRecordsFromAliasData();
+    renderStatsAndList();
+  }
+
+  function removeRecordByHash(recordHash) {
+    const index = state.records.findIndex((record) => record.hash === recordHash);
+    if (index < 0) {
+      return false;
+    }
+    state.records.splice(index, 1);
+    state.recordHashes = new Set(state.records.map((record) => record.hash));
+    return true;
+  }
+
+  function removeReviewRecord(recordHash, title) {
+    const titleText = String(title || 'Untitled Poll').replace(/\s+/g, ' ').trim().slice(0, 120) || 'Untitled Poll';
+    const confirmed = window.confirm(`Remove poll "${titleText}" from local history?`);
+    if (!confirmed) {
+      return;
+    }
+    if (!removeRecordByHash(recordHash)) {
+      return;
+    }
+    persistRecords();
     renderStatsAndList();
   }
 
@@ -772,10 +925,17 @@
       resetBtn.textContent = 'Reset';
       resetBtn.addEventListener('click', () => resetWinnerGroupAliases(entry));
 
+      const removeGroupBtn = document.createElement('button');
+      removeGroupBtn.type = 'button';
+      removeGroupBtn.className = 'btn btn-xs btn-danger';
+      removeGroupBtn.textContent = 'Remove Group';
+      removeGroupBtn.addEventListener('click', () => removeWinnerGroup(entry));
+
       controls.appendChild(mainInput);
       controls.appendChild(aliasInput);
       controls.appendChild(saveBtn);
       controls.appendChild(resetBtn);
+      controls.appendChild(removeGroupBtn);
       details.appendChild(controls);
 
       const variants = document.createElement('div');
@@ -924,6 +1084,18 @@
       customRow.appendChild(customBtn);
       optionsWrap.appendChild(customRow);
 
+      const actionRow = document.createElement('div');
+      actionRow.className = 'cytube-tools-poll-history-analyzer-review-actions';
+
+      const removePollBtn = document.createElement('button');
+      removePollBtn.type = 'button';
+      removePollBtn.className = 'btn btn-xs btn-danger';
+      removePollBtn.textContent = 'Remove Poll';
+      removePollBtn.addEventListener('click', () => removeReviewRecord(record.hash, record.title));
+
+      actionRow.appendChild(removePollBtn);
+      optionsWrap.appendChild(actionRow);
+
       row.appendChild(optionsWrap);
       reviewEl.appendChild(row);
     });
@@ -1020,7 +1192,7 @@
     const reviewRecords = getManualReviewRecords();
     const winnerCounts = new Map();
     const tagCounts = new Map();
-    const winnerDb = buildWinnerDatabase(filtered);
+    const winnerDb = getFilteredWinnerDatabase();
     winnerDb.forEach((entry) => {
       if (entry.count <= 0) {
         return;
@@ -1067,6 +1239,25 @@
   function clearRecords() {
     state.records = [];
     state.recordHashes = new Set();
+    state.openWinnerGroups.clear();
+    persistRecords();
+    renderStatsAndList();
+  }
+
+  function removeNoWinnerRecords() {
+    const noWinnerCount = state.records.reduce((count, record) => (
+      count + (record && record.winnerMode === 'none' ? 1 : 0)
+    ), 0);
+    if (!noWinnerCount) {
+      return;
+    }
+    const noun = noWinnerCount === 1 ? 'poll' : 'polls';
+    const confirmed = window.confirm(`Remove ${noWinnerCount} no-winner ${noun} from local history?`);
+    if (!confirmed) {
+      return;
+    }
+    state.records = state.records.filter((record) => record && record.winnerMode !== 'none');
+    state.recordHashes = new Set(state.records.map((record) => record.hash));
     state.openWinnerGroups.clear();
     persistRecords();
     renderStatsAndList();
@@ -1156,6 +1347,7 @@
     const openPollsEl = document.getElementById(UI_IDS.openPolls);
     const rescanEl = document.getElementById(UI_IDS.rescan);
     const markSoftEl = document.getElementById(UI_IDS.markSoft);
+    const removeNoWinnerEl = document.getElementById(UI_IDS.removeNoWinner);
     const clearEl = document.getElementById(UI_IDS.clear);
     const exportEl = document.getElementById(UI_IDS.export);
 
@@ -1210,6 +1402,9 @@
     }
     if (markSoftEl) {
       markSoftEl.addEventListener('click', () => captureSoftWinner('manual'));
+    }
+    if (removeNoWinnerEl) {
+      removeNoWinnerEl.addEventListener('click', removeNoWinnerRecords);
     }
     if (clearEl) {
       clearEl.addEventListener('click', clearRecords);
