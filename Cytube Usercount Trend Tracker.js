@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cytube Usercount Trend Tracker
 // @namespace    cytube.usercount.trend
-// @version      1.2
+// @version      1.3
 // @description  Track connected user trends and visualize session occupancy
 // @match        https://om3tcw.com/r/*
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/usercount-trend/utils.js
@@ -22,6 +22,13 @@
   const RETRY_DELAY_MS = 500;
   const MAX_RETRIES = 120;
   const SAMPLE_CAP = 3600;
+  const WINDOW_MINUTES_MIN = 1;
+  const WINDOW_MINUTES_MAX = 60 * 24 * 30;
+  const WINDOW_UNIT_TO_MINUTES = Object.freeze({
+    minutes: 1,
+    hours: 60,
+    days: 60 * 24
+  });
 
   const STORAGE_KEYS = {
     settings: 'cytube:usercount-trend:settings',
@@ -39,6 +46,7 @@
     enabled: 'cytube-tools-usercount-trend-enabled',
     interval: 'cytube-tools-usercount-trend-interval',
     window: 'cytube-tools-usercount-trend-window',
+    windowUnit: 'cytube-tools-usercount-trend-window-unit',
     paused: 'cytube-tools-usercount-trend-paused',
     sampleNow: 'cytube-tools-usercount-trend-sample-now',
     clear: 'cytube-tools-usercount-trend-clear',
@@ -130,7 +138,7 @@
     return {
       enabled: parseBoolean(raw.enabled, DEFAULT_SETTINGS.enabled),
       sampleIntervalMs: clampNumber(raw.sampleIntervalMs, 5000, 60000, DEFAULT_SETTINGS.sampleIntervalMs),
-      windowMinutes: clampNumber(raw.windowMinutes, 5, 120, DEFAULT_SETTINGS.windowMinutes),
+      windowMinutes: clampWindowMinutes(raw.windowMinutes, DEFAULT_SETTINGS.windowMinutes),
       paused: parseBoolean(raw.paused, DEFAULT_SETTINGS.paused)
     };
   }
@@ -159,6 +167,55 @@
 
   function persistSamples() {
     safeSetValue(STORAGE_KEYS.samples, JSON.stringify(state.samples));
+  }
+
+  function sanitizeWindowUnit(value) {
+    return Object.prototype.hasOwnProperty.call(WINDOW_UNIT_TO_MINUTES, value) ? value : 'minutes';
+  }
+
+  function clampWindowMinutes(value, fallback = DEFAULT_SETTINGS.windowMinutes) {
+    const minutes = clampNumber(value, WINDOW_MINUTES_MIN, WINDOW_MINUTES_MAX, fallback);
+    return Math.round(minutes);
+  }
+
+  function resolveWindowUi(minutes) {
+    const safeMinutes = clampWindowMinutes(minutes);
+    if (safeMinutes % WINDOW_UNIT_TO_MINUTES.days === 0) {
+      return { value: safeMinutes / WINDOW_UNIT_TO_MINUTES.days, unit: 'days' };
+    }
+    if (safeMinutes % WINDOW_UNIT_TO_MINUTES.hours === 0) {
+      return { value: safeMinutes / WINDOW_UNIT_TO_MINUTES.hours, unit: 'hours' };
+    }
+    return { value: safeMinutes, unit: 'minutes' };
+  }
+
+  function getWindowMinutesFromInputs(windowEl, windowUnitEl) {
+    if (!windowEl) {
+      return clampWindowMinutes(state.settings.windowMinutes, DEFAULT_SETTINGS.windowMinutes);
+    }
+    if (!windowUnitEl) {
+      return clampWindowMinutes(windowEl.value, DEFAULT_SETTINGS.windowMinutes);
+    }
+    const unit = sanitizeWindowUnit(windowUnitEl.value);
+    const multiplier = WINDOW_UNIT_TO_MINUTES[unit];
+    const numeric = Number(windowEl.value);
+    if (!Number.isFinite(numeric)) {
+      return clampWindowMinutes(DEFAULT_SETTINGS.windowMinutes, DEFAULT_SETTINGS.windowMinutes);
+    }
+    return clampWindowMinutes(numeric * multiplier, DEFAULT_SETTINGS.windowMinutes);
+  }
+
+  function formatWindowLabel(minutes) {
+    const safeMinutes = clampWindowMinutes(minutes, DEFAULT_SETTINGS.windowMinutes);
+    if (safeMinutes % WINDOW_UNIT_TO_MINUTES.days === 0) {
+      const days = safeMinutes / WINDOW_UNIT_TO_MINUTES.days;
+      return `${days} day${days === 1 ? '' : 's'}`;
+    }
+    if (safeMinutes % WINDOW_UNIT_TO_MINUTES.hours === 0) {
+      const hours = safeMinutes / WINDOW_UNIT_TO_MINUTES.hours;
+      return `${hours} hour${hours === 1 ? '' : 's'}`;
+    }
+    return `${safeMinutes} minute${safeMinutes === 1 ? '' : 's'}`;
   }
 
   function waitForEl(selector, attempt = 0) {
@@ -438,7 +495,7 @@
     const windowSamples = getWindowSamples();
     const stats = computeStats(windowSamples);
     if (!stats) {
-      statsEl.textContent = `No samples yet. Sampling every ${state.settings.sampleIntervalMs / 1000}s when enabled.`;
+      statsEl.textContent = `No samples yet. Sampling every ${state.settings.sampleIntervalMs / 1000}s when enabled. Window: ${formatWindowLabel(state.settings.windowMinutes)}.`;
       drawChart([]);
       return;
     }
@@ -449,6 +506,7 @@
 
     statsEl.textContent = [
       `Status: ${status}`,
+      `Window: ${formatWindowLabel(state.settings.windowMinutes)}`,
       `Current: ${stats.current}`,
       `Min: ${stats.min}`,
       `Max: ${stats.max}`,
@@ -488,6 +546,7 @@
     const enabledEl = document.getElementById(UI_IDS.enabled);
     const intervalEl = document.getElementById(UI_IDS.interval);
     const windowEl = document.getElementById(UI_IDS.window);
+    const windowUnitEl = document.getElementById(UI_IDS.windowUnit);
     const pausedEl = document.getElementById(UI_IDS.paused);
 
     if (enabledEl) {
@@ -497,7 +556,13 @@
       intervalEl.value = String(state.settings.sampleIntervalMs);
     }
     if (windowEl) {
-      windowEl.value = String(state.settings.windowMinutes);
+      if (windowUnitEl) {
+        const uiWindow = resolveWindowUi(state.settings.windowMinutes);
+        windowEl.value = String(uiWindow.value);
+        windowUnitEl.value = uiWindow.unit;
+      } else {
+        windowEl.value = String(state.settings.windowMinutes);
+      }
     }
     if (pausedEl) {
       pausedEl.checked = state.settings.paused;
@@ -509,6 +574,7 @@
     const enabledEl = document.getElementById(UI_IDS.enabled);
     const intervalEl = document.getElementById(UI_IDS.interval);
     const windowEl = document.getElementById(UI_IDS.window);
+    const windowUnitEl = document.getElementById(UI_IDS.windowUnit);
     const pausedEl = document.getElementById(UI_IDS.paused);
     const sampleNowEl = document.getElementById(UI_IDS.sampleNow);
     const clearEl = document.getElementById(UI_IDS.clear);
@@ -533,10 +599,33 @@
     }
 
     if (windowEl) {
-      windowEl.addEventListener('change', () => {
-        const next = clampNumber(windowEl.value, 5, 120, DEFAULT_SETTINGS.windowMinutes);
+      const applyWindowChange = () => {
+        const next = getWindowMinutesFromInputs(windowEl, windowUnitEl);
         state.settings.windowMinutes = next;
-        windowEl.value = String(next);
+        if (windowUnitEl) {
+          const uiWindow = resolveWindowUi(next);
+          windowEl.value = String(uiWindow.value);
+          windowUnitEl.value = uiWindow.unit;
+        } else {
+          windowEl.value = String(next);
+        }
+        persistSettings();
+        renderStatsAndChart();
+      };
+      windowEl.addEventListener('change', applyWindowChange);
+      windowEl.addEventListener('blur', applyWindowChange);
+    }
+
+    if (windowUnitEl) {
+      windowUnitEl.addEventListener('change', () => {
+        if (!windowEl) {
+          return;
+        }
+        const next = getWindowMinutesFromInputs(windowEl, windowUnitEl);
+        state.settings.windowMinutes = next;
+        const uiWindow = resolveWindowUi(next);
+        windowEl.value = String(uiWindow.value);
+        windowUnitEl.value = uiWindow.unit;
         persistSettings();
         renderStatsAndChart();
       });

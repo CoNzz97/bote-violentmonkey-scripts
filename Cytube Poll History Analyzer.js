@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cytube Poll History Analyzer
 // @namespace    cytube.poll.history.analyzer
-// @version      2.4
+// @version      2.5
 // @description  Parse poll history, group name aliases, and track soft winners
 // @match        https://om3tcw.com/r/*
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/storage-utils.js
@@ -35,10 +35,7 @@
     records: 'cytube:poll-history-analyzer:records'
   };
 
-  const DEFAULT_ALIAS_RULES = [
-    'Elizabeth Rose Bloodflame: liz, erb, elizabeth',
-    'Kiara: wawa, kiara'
-  ].join('\n');
+  const DEFAULT_ALIAS_RULES = '';
 
   const DEFAULT_SETTINGS = {
     enabled: false,

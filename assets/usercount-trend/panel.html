@@ -14,13 +14,21 @@
 </label>
 <label class="cytube-tools-usercount-trend-line">
   Window
-  <select id="cytube-tools-usercount-trend-window" class="form-control cytube-tools-usercount-trend-select">
-    <option value="5">5 minutes</option>
-    <option value="15">15 minutes</option>
-    <option value="30">30 minutes</option>
-    <option value="60">60 minutes</option>
-    <option value="120">120 minutes</option>
-  </select>
+  <span class="cytube-tools-usercount-trend-window-controls">
+    <input
+      type="number"
+      id="cytube-tools-usercount-trend-window"
+      class="form-control cytube-tools-usercount-trend-window-value"
+      min="1"
+      step="1"
+      value="15"
+    >
+    <select id="cytube-tools-usercount-trend-window-unit" class="form-control cytube-tools-usercount-trend-select">
+      <option value="minutes">Minutes</option>
+      <option value="hours">Hours</option>
+      <option value="days">Days</option>
+    </select>
+  </span>
 </label>
 <label class="cytube-tools-usercount-trend-line">
   <input type="checkbox" id="cytube-tools-usercount-trend-paused">

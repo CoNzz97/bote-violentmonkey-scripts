@@ -31,6 +31,23 @@
   margin-left: 8px;
 }
 
+.cytube-tools-usercount-trend-window-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.cytube-tools-usercount-trend-window-controls .cytube-tools-usercount-trend-select {
+  width: 110px;
+  margin-left: 0;
+}
+
+.cytube-tools-usercount-trend-window-value {
+  width: 90px;
+  display: inline-block;
+}
+
 .cytube-tools-usercount-trend-actions {
   display: flex;
   gap: 6px;
