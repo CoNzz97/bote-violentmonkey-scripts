@@ -929,7 +929,7 @@
 
       const variants = document.createElement('div');
       variants.className = 'cytube-tools-poll-history-analyzer-winner-variants';
-      variants.textContent = `Variants: ${entry.rawWinners.join(' | ')}`;
+      variants.textContent = `Observed winner text (from polls): ${entry.rawWinners.join(' | ')}`;
       details.appendChild(variants);
 
       const polls = document.createElement('div');

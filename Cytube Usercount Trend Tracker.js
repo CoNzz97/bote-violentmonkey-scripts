@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cytube Usercount Trend Tracker
 // @namespace    cytube.usercount.trend
-// @version      1.1
+// @version      1.2
 // @description  Track connected user trends and visualize session occupancy
 // @match        https://om3tcw.com/r/*
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/usercount-trend/utils.js
@@ -29,7 +29,7 @@
   };
 
   const DEFAULT_SETTINGS = {
-    enabled: false,
+    enabled: true,
     sampleIntervalMs: 10000,
     windowMinutes: 15,
     paused: false
