@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name Hololive Stream Tracker
 // @namespace holodex.tracker
-// @version 2.9.0
+// @version 2.9.1
 // @description Shows streams
 // @match https://om3tcw.com/r/*
 // @require https://conzz97.github.io/bote-violentmonkey-scripts/lib/hololive-stream-tracker/utils.js
@@ -40,6 +40,7 @@
   let API_KEY = GM_getValue(STORAGE_KEYS.apiKey);
   const API_BASE = 'https://holodex.net/api/v2';
   const MAX_UPCOMING = 75;
+  const STALE_UPCOMING_GRACE_MS = 30 * 60 * 1000;
 
   const KEYWORDS = [
     '3D', 'karaoke', 'concert', 'ホロフェス', '歌枠',
@@ -138,6 +139,39 @@
     return hololiveUtils.formatTimeUntil(video);
   }
 
+  function isLiveStream(video) {
+    if (typeof hololiveUtils.isLive === 'function') {
+      return hololiveUtils.isLive(video);
+    }
+    return Boolean(video && video.status === 'live');
+  }
+
+  function isUpcomingCandidate(video, now = new Date()) {
+    if (typeof hololiveUtils.isUpcomingCandidate === 'function') {
+      return hololiveUtils.isUpcomingCandidate(video, now, STALE_UPCOMING_GRACE_MS);
+    }
+    if (!video || typeof video !== 'object') {
+      return false;
+    }
+    if (isLiveStream(video)) {
+      return true;
+    }
+    if (String(video.status || '').toLowerCase() === 'past') {
+      return false;
+    }
+
+    const endActual = new Date(video.end_actual);
+    if (Number.isFinite(endActual.getTime()) && endActual <= now) {
+      return false;
+    }
+
+    const scheduled = new Date(video.start_scheduled || video.available_at);
+    if (!Number.isFinite(scheduled.getTime())) {
+      return false;
+    }
+    return scheduled.getTime() + STALE_UPCOMING_GRACE_MS >= now.getTime();
+  }
+
   function getStreamTag(video) {
     return hololiveUtils.getStreamTag(video, KEYWORDS, KEYWORD_REGEXES, TAG_MAP);
   }
@@ -169,17 +203,18 @@
     }))).then(results => {
       const combined = [...results[0], ...results[1]];
       const seen = new Set();
+      const now = new Date();
 
       const matches = combined.filter(v => {
         if (seen.has(v.id)) return false;
         seen.add(v.id);
-        return isHololive(v.channel, includeMales) && v.status !== 'past';
+        return isHololive(v.channel, includeMales) && isUpcomingCandidate(v, now);
       });
 
       // Sort: Live first, then by scheduled time
       matches.sort((a, b) => {
-        const aLive = a.status === 'live' || a.start_actual;
-        const bLive = b.status === 'live' || b.start_actual;
+        const aLive = isLiveStream(a);
+        const bLive = isLiveStream(b);
         if (aLive && !bLive) return -1;
         if (!aLive && bLive) return 1;
         return new Date(a.start_scheduled || a.available_at) - new Date(b.start_scheduled || b.available_at);
@@ -203,12 +238,13 @@
     header.style.alignItems = 'center';
     header.style.marginBottom = '8px';
 
+    const renderNow = new Date();
     let filteredStreams = currentStreams;
     if (currentFilter !== 'All') {
         filteredStreams = filteredStreams.filter(s => getStreamTag(s) === currentFilter);
     }
     if (showUpcomingOnly) {
-        filteredStreams = filteredStreams.filter(s => s.status !== 'live' && !s.start_actual);
+        filteredStreams = filteredStreams.filter(s => !isLiveStream(s) && isUpcomingCandidate(s, renderNow));
     }
 
     const title = document.createElement('h3');
@@ -272,7 +308,7 @@
         const time = v.start_scheduled || v.available_at;
         const tag = getStreamTag(v);
         const tagHTML = tag ? `<span style="color:#ff6b6b;font-weight:bold;margin-right:6px;">[${tag}]</span>` : '';
-        const isLive = v.status === 'live' || v.start_actual;
+        const isLive = isLiveStream(v);
 
         const li = document.createElement('li');
         li.innerHTML = `<a href="https://holodex.net/watch/${v.id}" target="_blank" style="color:#fff;text-decoration:none;">

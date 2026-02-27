@@ -230,6 +230,14 @@
   white-space: nowrap;
 }
 
+.cytube-tools-poll-history-analyzer-review-group-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  margin-top: 2px;
+}
+
 .cytube-tools-poll-history-analyzer-review-custom-row {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto;
@@ -324,6 +332,10 @@
   }
 
   .cytube-tools-poll-history-analyzer-review-option-row {
+    grid-template-columns: 1fr;
+  }
+
+  .cytube-tools-poll-history-analyzer-review-group-row {
     grid-template-columns: 1fr;
   }
 

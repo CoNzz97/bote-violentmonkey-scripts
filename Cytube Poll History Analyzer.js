@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Cytube Poll History Analyzer
 // @namespace    cytube.poll.history.analyzer
-// @version      2.5
+// @version      2.6
 // @description  Parse poll history, group name aliases, and track soft winners
 // @match        https://om3tcw.com/r/*
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/poll-history-analyzer/storage-utils.js
@@ -644,6 +644,22 @@
     return winnerDatabaseEngine.buildWinnerDatabase(records, state.settings.aliasRulesText);
   }
 
+  function getManualAssignmentGroups() {
+    const groupMap = new Map();
+    buildWinnerDatabase(state.records).forEach((entry) => {
+      if (!entry || !entry.known) {
+        return;
+      }
+      const label = String(entry.label || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+      const key = normalizeText(label);
+      if (!key || groupMap.has(key)) {
+        return;
+      }
+      groupMap.set(key, label);
+    });
+    return Array.from(groupMap.values()).sort((a, b) => a.localeCompare(b));
+  }
+
   function rebuildRecordsFromAliasData() {
     state.records = state.records.map((record) => sanitizeRecord({
       ...record,
@@ -801,11 +817,12 @@
     renderStatsAndList();
   }
 
-  function setManualWinnerForRecord(recordHash, winnerLabelRaw) {
+  function setManualWinnerForRecord(recordHash, winnerLabelRaw, winnerGroupRaw = '') {
     const winnerLabel = String(winnerLabelRaw || '').replace(/\s+/g, ' ').trim().slice(0, 160);
     if (!winnerLabel) {
       return;
     }
+    const winnerGroupLabel = String(winnerGroupRaw || '').replace(/\s+/g, ' ').trim().slice(0, 160);
 
     const recordIndex = state.records.findIndex((record) => record.hash === recordHash);
     if (recordIndex < 0) {
@@ -815,9 +832,10 @@
     const existing = state.records[recordIndex];
     const winnerKey = normalizeText(winnerLabel);
     if (winnerKey) {
+      const targetGroupLabel = winnerGroupLabel || winnerLabel;
       state.settings.winnerOverrides = {
         ...(state.settings.winnerOverrides || {}),
-        [winnerKey]: winnerLabel
+        [winnerKey]: targetGroupLabel
       };
       persistSettings();
     }
@@ -964,8 +982,20 @@
     });
   }
 
-  function renderManualReviewList(reviewEl, reviewRecords) {
+  function setManualWinnerGroupForRecord(recordHash, winnerGroupRaw) {
+    const winnerGroupLabel = String(winnerGroupRaw || '').replace(/\s+/g, ' ').trim().slice(0, 160);
+    if (!winnerGroupLabel) {
+      return;
+    }
+    setManualWinnerForRecord(recordHash, winnerGroupLabel, winnerGroupLabel);
+  }
+
+  function renderManualReviewList(reviewEl, reviewRecords, manualGroups = []) {
     reviewEl.replaceChildren();
+    const knownGroups = Array.isArray(manualGroups) ? manualGroups : [];
+    const groupLookup = new Map(
+      knownGroups.map((label) => [normalizeText(label), String(label)])
+    );
 
     const head = document.createElement('div');
     head.className = 'cytube-tools-poll-history-analyzer-review-head';
@@ -997,6 +1027,49 @@
 
       const optionsWrap = document.createElement('div');
       optionsWrap.className = 'cytube-tools-poll-history-analyzer-review-options';
+      const currentWinnerRaw = getWinnerRaw(record);
+      const currentGroupLabel = currentWinnerRaw ? getWinnerGroupLabel(currentWinnerRaw) : '';
+      const currentGroupKey = normalizeText(currentGroupLabel);
+
+      const groupRow = document.createElement('div');
+      groupRow.className = 'cytube-tools-poll-history-analyzer-review-group-row';
+
+      const groupSelect = document.createElement('select');
+      groupSelect.className = 'form-control';
+
+      const placeholderOption = document.createElement('option');
+      placeholderOption.value = '';
+      placeholderOption.textContent = knownGroups.length ? 'Select winner group' : 'No saved winner groups';
+      groupSelect.appendChild(placeholderOption);
+
+      knownGroups.forEach((groupLabel) => {
+        const groupOption = document.createElement('option');
+        groupOption.value = groupLabel;
+        groupOption.textContent = groupLabel;
+        groupSelect.appendChild(groupOption);
+      });
+
+      if (currentGroupKey && groupLookup.has(currentGroupKey)) {
+        groupSelect.value = groupLookup.get(currentGroupKey);
+      }
+      if (!knownGroups.length) {
+        groupSelect.disabled = true;
+      }
+
+      const setGroupBtn = document.createElement('button');
+      setGroupBtn.type = 'button';
+      setGroupBtn.className = 'btn btn-xs btn-default';
+      setGroupBtn.textContent = 'Set Poll To Group';
+      setGroupBtn.disabled = !knownGroups.length;
+      setGroupBtn.addEventListener('click', () => {
+        setManualWinnerGroupForRecord(record.hash, groupSelect.value);
+      });
+
+      groupRow.appendChild(groupSelect);
+      groupRow.appendChild(setGroupBtn);
+      optionsWrap.appendChild(groupRow);
+
+      const getSelectedGroup = () => String(groupSelect.value || '').replace(/\s+/g, ' ').trim();
       const options = Array.isArray(record.options) ? record.options : [];
       if (!options.length) {
         const empty = document.createElement('div');
@@ -1030,7 +1103,7 @@
         setBtn.className = 'btn btn-xs btn-primary';
         setBtn.textContent = 'Set Winner';
         setBtn.addEventListener('click', () => {
-          setManualWinnerForRecord(record.hash, cleanedLabel);
+          setManualWinnerForRecord(record.hash, cleanedLabel, getSelectedGroup());
         });
 
         optionRow.appendChild(label);
@@ -1054,7 +1127,7 @@
       customBtn.textContent = 'Set Custom Winner';
 
       const submitCustomWinner = () => {
-        setManualWinnerForRecord(record.hash, customInput.value);
+        setManualWinnerForRecord(record.hash, customInput.value, getSelectedGroup());
       };
 
       customBtn.addEventListener('click', submitCustomWinner);
@@ -1179,6 +1252,7 @@
     const winnerCounts = new Map();
     const tagCounts = new Map();
     const winnerDb = getFilteredWinnerDatabase();
+    const manualGroups = getManualAssignmentGroups();
     winnerDb.forEach((entry) => {
       if (entry.count <= 0) {
         return;
@@ -1217,7 +1291,7 @@
 
     renderWinnerDatabase(winnerDbEl, winnerDb);
     if (reviewEl) {
-      renderManualReviewList(reviewEl, reviewRecords);
+      renderManualReviewList(reviewEl, reviewRecords, manualGroups);
     }
     renderRecordList(listEl, filtered);
   }
