@@ -18,6 +18,12 @@
   const STORAGE_KEY = 'worldClockVisible';
   const TOGGLE_ID = 'world-clock-btn';
   const CLOCK_ITEM_ID = 'world-clock-li';
+  const NAVBAR_LIST_SELECTOR = '#nav-collapsible .nav.navbar-nav';
+  const NAVBAR_ANCHOR_SELECTORS = [
+    '#navbar-motd-toggle',
+    '#togglemotd',
+    '#audio-only'
+  ];
   const RETRY_DELAY_MS = 250;
   const MAX_RETRIES = 200;
   const CLOCK_UPDATE_MS = 30000;
@@ -105,16 +111,42 @@
   }
 
   function ensureClockItem() {
-    const motdLi = document.querySelector('#togglemotd')?.closest('li');
-    if (!motdLi) {
+    let navUl = document.querySelector(NAVBAR_LIST_SELECTOR);
+    let anchorLi = null;
+
+    for (const selector of NAVBAR_ANCHOR_SELECTORS) {
+      const candidateLi = document.querySelector(selector)?.closest('li');
+      if (!candidateLi || !candidateLi.parentElement) {
+        continue;
+      }
+      if (navUl && candidateLi.parentElement !== navUl) {
+        continue;
+      }
+
+      anchorLi = candidateLi;
+      navUl = candidateLi.parentElement;
+      break;
+    }
+
+    if (!navUl) {
       return false;
     }
-    const navUl = motdLi.parentElement;
+
+    function placeClockItem() {
+      if (anchorLi) {
+        if (state.clockLi.previousElementSibling !== anchorLi) {
+          anchorLi.after(state.clockLi);
+        }
+        return;
+      }
+
+      if (state.clockLi.parentElement !== navUl) {
+        navUl.appendChild(state.clockLi);
+      }
+    }
 
     if (state.clockLi && state.clockLi.isConnected) {
-      if (state.clockLi.previousElementSibling !== motdLi) {
-        motdLi.after(state.clockLi);
-      }
+      placeClockItem();
       return true;
     }
 
@@ -128,9 +160,7 @@
         state.clockAnchor.addEventListener('click', (event) => event.preventDefault());
         state.clockLi.appendChild(state.clockAnchor);
       }
-      if (state.clockLi.previousElementSibling !== motdLi) {
-        motdLi.after(state.clockLi);
-      }
+      placeClockItem();
       return true;
     }
 
@@ -142,7 +172,7 @@
     state.clockAnchor.addEventListener('click', (event) => event.preventDefault());
     state.clockLi.appendChild(state.clockAnchor);
 
-    motdLi.after(state.clockLi);
+    placeClockItem();
 
     return true;
   }
