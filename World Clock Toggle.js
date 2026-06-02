@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         World Clock Toggle
 // @namespace    world.clock
-// @version      2.7
+// @version      2.8
 // @description  Adds clocks to nav bar
 // @match        https://om3tcw.com/r/*
 // @require      https://conzz97.github.io/bote-violentmonkey-scripts/lib/world-clock-toggle/utils.js
@@ -12,29 +12,29 @@
 // @resource     worldClockToggleStyles https://conzz97.github.io/bote-violentmonkey-scripts/assets/world-clock-toggle/styles.css
 // ==/UserScript==
 
-(function() {
-  'use strict';
+(function () {
+  "use strict";
 
-  const STORAGE_KEY = 'worldClockVisible';
-  const TOGGLE_ID = 'world-clock-btn';
-  const CLOCK_ITEM_ID = 'world-clock-li';
-  const NAVBAR_LIST_SELECTOR = '#nav-collapsible .nav.navbar-nav';
+  const STORAGE_KEY = "worldClockVisible";
+  const TOGGLE_ID = "world-clock-btn";
+  const CLOCK_ITEM_ID = "world-clock-li";
+  const NAVBAR_LIST_SELECTOR = "#nav-collapsible .nav.navbar-nav";
   const NAVBAR_ANCHOR_SELECTORS = [
-    '#navbar-motd-toggle',
-    '#togglemotd',
-    '#audio-only'
+    "#navbar-motd-toggle",
+    "#togglemotd",
+    "#audio-only",
   ];
   const RETRY_DELAY_MS = 250;
   const MAX_RETRIES = 200;
   const CLOCK_UPDATE_MS = 30000;
   const RESOURCE_NAMES = {
-    styles: 'worldClockToggleStyles'
+    styles: "worldClockToggleStyles",
   };
 
   const TIMEZONES = {
-    UK: 'Europe/London',
-    Japan: 'Asia/Tokyo',
-    America: 'America/New_York'
+    UK: "Europe/London",
+    Japan: "Asia/Tokyo",
+    America: "America/New_York",
   };
   const timeFormatters = {};
 
@@ -47,17 +47,20 @@
     button: null,
     clockLi: null,
     clockAnchor: null,
-    isVisible: worldClockUtils.parseBoolean(GM_getValue(STORAGE_KEY, false), false),
-    updateInterval: null
+    isVisible: worldClockUtils.parseBoolean(
+      GM_getValue(STORAGE_KEY, false),
+      false,
+    ),
+    updateInterval: null,
   };
 
-  function safeGetResourceText(name, fallback = '') {
+  function safeGetResourceText(name, fallback = "") {
     try {
-      if (typeof GM_getResourceText !== 'function') {
+      if (typeof GM_getResourceText !== "function") {
         return fallback;
       }
       const text = GM_getResourceText(name);
-      if (typeof text === 'string' && text.trim()) {
+      if (typeof text === "string" && text.trim()) {
         return text;
       }
     } catch (err) {
@@ -68,11 +71,11 @@
 
   function formatTimeInZone(timeZone) {
     if (!timeFormatters[timeZone]) {
-      timeFormatters[timeZone] = new Intl.DateTimeFormat('en-GB', {
+      timeFormatters[timeZone] = new Intl.DateTimeFormat("en-GB", {
         timeZone,
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
       });
     }
     return timeFormatters[timeZone].format(new Date());
@@ -115,7 +118,7 @@
     let anchorLi = null;
 
     for (const selector of NAVBAR_ANCHOR_SELECTORS) {
-      const candidateLi = document.querySelector(selector)?.closest('li');
+      const candidateLi = document.querySelector(selector)?.closest("li");
       if (!candidateLi || !candidateLi.parentElement) {
         continue;
       }
@@ -153,23 +156,27 @@
     const existing = document.getElementById(CLOCK_ITEM_ID);
     if (existing) {
       state.clockLi = existing;
-      state.clockAnchor = existing.querySelector('a');
+      state.clockAnchor = existing.querySelector("a");
       if (!state.clockAnchor) {
-        state.clockAnchor = document.createElement('a');
-        state.clockAnchor.href = '#';
-        state.clockAnchor.addEventListener('click', (event) => event.preventDefault());
+        state.clockAnchor = document.createElement("a");
+        state.clockAnchor.href = "#";
+        state.clockAnchor.addEventListener("click", (event) =>
+          event.preventDefault(),
+        );
         state.clockLi.appendChild(state.clockAnchor);
       }
       placeClockItem();
       return true;
     }
 
-    state.clockLi = document.createElement('li');
+    state.clockLi = document.createElement("li");
     state.clockLi.id = CLOCK_ITEM_ID;
 
-    state.clockAnchor = document.createElement('a');
-    state.clockAnchor.href = '#';
-    state.clockAnchor.addEventListener('click', (event) => event.preventDefault());
+    state.clockAnchor = document.createElement("a");
+    state.clockAnchor.href = "#";
+    state.clockAnchor.addEventListener("click", (event) =>
+      event.preventDefault(),
+    );
     state.clockLi.appendChild(state.clockAnchor);
 
     placeClockItem();
@@ -183,37 +190,37 @@
     }
 
     if (state.isVisible) {
-      state.clockLi.style.display = 'list-item';
+      state.clockLi.style.display = "list-item";
       startClockUpdates();
     } else {
-      state.clockLi.style.display = 'none';
+      state.clockLi.style.display = "none";
       stopClockUpdates();
     }
   }
 
   function ensureToggleButton() {
-    const toolsContainer = document.getElementById('tools-button-container');
+    const toolsContainer = document.getElementById("tools-button-container");
     if (!toolsContainer) {
       return false;
     }
 
     state.button = document.getElementById(TOGGLE_ID);
     if (state.button) {
-      state.button.classList.toggle('active', state.isVisible);
+      state.button.classList.toggle("active", state.isVisible);
       return true;
     }
 
-    state.button = document.createElement('button');
+    state.button = document.createElement("button");
     state.button.id = TOGGLE_ID;
-    state.button.textContent = '🕐';
-    state.button.title = 'Toggle World Clock in Navbar';
-    state.button.className = 'btn btn-sm btn-default';
-    state.button.style.marginLeft = '5px';
-    state.button.classList.toggle('active', state.isVisible);
-    state.button.addEventListener('click', () => {
+    state.button.textContent = "🕐";
+    state.button.title = "Toggle World Clock in Navbar";
+    state.button.className = "btn btn-sm btn-default";
+    state.button.style.marginLeft = "5px";
+    state.button.classList.toggle("active", state.isVisible);
+    state.button.addEventListener("click", () => {
       state.isVisible = !state.isVisible;
       GM_setValue(STORAGE_KEY, state.isVisible);
-      state.button.classList.toggle('active', state.isVisible);
+      state.button.classList.toggle("active", state.isVisible);
       syncClockVisibility();
     });
 
@@ -237,7 +244,7 @@
     setTimeout(() => waitForUi(attempt + 1), RETRY_DELAY_MS);
   }
 
-  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, '');
+  const resourceCss = safeGetResourceText(RESOURCE_NAMES.styles, "");
   if (resourceCss) {
     GM_addStyle(resourceCss);
   } else {
